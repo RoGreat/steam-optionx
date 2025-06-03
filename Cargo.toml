@@ -1,0 +1,9 @@
+[package]
+name = "steam-optionx"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+keyvalues-serde = "0.2.2"
+serde = { version = "1.0.219", features = ["derive"] }
+serde-value = "0.7.0"
