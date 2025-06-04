@@ -77,25 +77,25 @@ struct Steam {
 #[derive(Deserialize, Debug)]
 struct Apps {
     #[serde(flatten)]
-    id: HashMap<String, Value>,
+    values: HashMap<String, Value>,
 }
 
 fn main() -> keyvalues_serde::Result<()> {
     let user_local_config_store: UserLocalConfigStore = keyvalues_serde::from_str(VDF_TEXT)?;
-    let apps = user_local_config_store.software.valve.steam.apps.id;
+    let apps = user_local_config_store.software.valve.steam.apps.values;
 
     for (appid, values) in apps.keys().zip(apps.values()) {
         let values = values.clone().deserialize_into::<HashMap<String, Value>>();
-        for (option, value) in &values.unwrap() {
+        for (key, value) in &values.unwrap() {
             let value = value.clone().deserialize_into::<String>();
             match value {
                 Ok(_) => {}
                 Err(_) => continue,
             }
-            if option == "LaunchOptions" {
+            if key == "LaunchOptions" {
                 println!();
                 println!("App ID: {:#?}", appid);
-                println!("Option: {:#?}", option);
+                println!("Key: {:#?}", key);
                 println!("Value: {:#?}", value.unwrap());
             }
         }
