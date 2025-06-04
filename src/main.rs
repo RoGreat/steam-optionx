@@ -137,6 +137,8 @@ fn main() -> keyvalues_serde::Result<()> {
 
     vdf.software.valve.steam.apps.values.insert(appid, value);
 
+    println!("VDF: {:#?}", vdf);
+
     let test = keyvalues_serde::to_string(&vdf)?;
 
     println!("Test: {:#?}", test);
