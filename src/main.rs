@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use serde_value::Value;
 use std::collections::HashMap;
 
+const OPTION: &str = "LaunchOptions";
+
 const VDF_TEXT: &str = r##"
 // this file defines the contents of the platform menu
 "UserLocalConfigStore"
@@ -81,8 +83,6 @@ struct Apps {
 }
 
 fn main() -> keyvalues_serde::Result<()> {
-    const OPTION: &str = "LaunchOptions";
-
     let user_local_config_store: UserLocalConfigStore = keyvalues_serde::from_str(VDF_TEXT)?;
     let apps = user_local_config_store.software.valve.steam.apps.values;
     println!("{:#?}", apps);
@@ -111,14 +111,19 @@ fn main() -> keyvalues_serde::Result<()> {
 
     println!("Results: {:#?}", results);
 
+    let mut map = HashMap::new();
+
+    map.insert(OPTION.to_string(), "BEEPBEEP".to_string());
+
     let app = Apps {
-        values: HashMap::from([(
-            results[0].clone().0,
-            serde_value::to_value((OPTION, "BEEPBEEP")).unwrap(),
-        )]),
+        values: HashMap::from([(results[0].clone().0, serde_value::to_value(map).unwrap())]),
     };
 
-    println!("App: {:#?}", app);
+    println!("App: {:#?}", app.values);
+
+    let test = keyvalues_serde::to_string(&app)?;
+
+    println!("Test: {:#?}", test);
 
     Ok(())
 }
