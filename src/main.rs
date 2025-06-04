@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use serde_value::Value;
 //use std::collections::BTreeMap as Map;
+use std::any::{Any, TypeId};
 use std::collections::HashMap;
 
 const VDF_TEXT: &str = r##"
@@ -21,11 +22,21 @@ const VDF_TEXT: &str = r##"
                     }
                     "0987654321"
                     {
+                        "BadgeData"		"000000000000"
                         "LaunchOptions"   "PLACEHOLDER NOT IN QUOTES"
                         "cloud"
 						{
 							"last_sync_state"		"synchronized"
 						}
+                    }
+                    "2222222222"
+                    {
+                        "LaunchOptions"   "PLACEHOLDER ALSO NOT IN QUOTES"
+                        "cloud"
+						{
+							"last_sync_state"		"synchronized"
+						}
+						"BadgeData"		"000000000000"
                     }
                     "1111111111"
                     {
@@ -33,6 +44,7 @@ const VDF_TEXT: &str = r##"
 						{
 							"last_sync_state"		"synchronized"
 						}
+						"BadgeData"		"000000000000"
                     }
                 }
             }
@@ -74,17 +86,23 @@ fn main() -> keyvalues_serde::Result<()> {
     let user_local_config_store: UserLocalConfigStore = keyvalues_serde::from_str(VDF_TEXT)?;
     let appid = user_local_config_store.software.valve.steam.apps.id;
 
-    for x in appid.keys() {
-        println!("{:#?}", x);
+    for id in appid.keys() {
+        println!("{:#?}", id);
     }
 
-    for x in appid.values() {
-        println!("{:#?}", &x);
-        let y = x.clone().deserialize_into::<HashMap<String, String>>();
-        println!("{:#?}", &y);
-        for z in y.unwrap().iter() {
-            if z.0 == "LaunchOptions" {
-                println!("{:#?}", z.1);
+    for y in appid.values() {
+        let z = y.clone().deserialize_into::<HashMap<String, Value>>();
+        for (option, value) in &z.unwrap() {
+            let test = value.clone().deserialize_into::<String>();
+            match test {
+                Ok(_) => {}
+                Err(_) => continue,
+            }
+            if option == "LaunchOptions" {
+                println!();
+                //println!("{:#?}", id);
+                println!("{:#?}", option);
+                println!("{:#?}", test.unwrap());
             }
         }
     }
