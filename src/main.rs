@@ -1,68 +1,12 @@
 use serde::{Deserialize, Serialize};
 use serde_value::Value;
 use std::collections::HashMap;
+use std::fs;
 use std::fs::File;
 use std::io::Write;
 
 const OPTION: &str = "LaunchOptions";
 const KEY: &str = "UserLocalConfigStore";
-
-const VDF_TEXT: &str = r##"
-// this file defines the contents of the platform menu
-"UserLocalConfigStore"
-{
-    "Software"
-    {
-        "Valve"
-        {
-            "Steam"
-            {
-                "apps"
-                {
-                    "1234567890"
-                    {
-                        "LaunchOptions"   "\"PLACEHOLDER IN QUOTES\""
-                    }
-                    "0987654321"
-                    {
-                        "BadgeData"		"000000000000"
-                        "LaunchOptions"   "PLACEHOLDER NOT IN QUOTES"
-                        "cloud"
-						{
-							"last_sync_state"		"synchronized"
-						}
-                    }
-                    "2222222222"
-                    {
-                        "LaunchOptions"   "PLACEHOLDER ALSO NOT IN QUOTES"
-                        "cloud"
-						{
-							"last_sync_state"		"synchronized"
-						}
-						"BadgeData"		"000000000000"
-                    }
-                    "1111111111"
-                    {
-                        "cloud"
-						{
-							"last_sync_state"		"synchronized"
-						}
-						"BadgeData"		"000000000000"
-                    }
-                }
-            }
-        }
-        "Broadcast"
-        {
-            "Permissions"		"1"
-		}
-    }
-    "Broadcast"
-	{
-		"Permissions"		"1"
-	}
-}
-"##;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
@@ -101,14 +45,22 @@ struct Apps {
     values: HashMap<String, Value>,
 }
 
+// Need to list all App IDs and put it into a table
+// Later will use an API to figure out app names
+//
+// Inputs:
+// Filepath of vdf
+// Selected App ID
+// Global - envs, cmds, args
+// PerGame - envs, cmds, args
 fn main() -> keyvalues_serde::Result<()> {
-    let config: UserLocalConfigStore = keyvalues_serde::from_str(VDF_TEXT)?;
+    let mut results: HashMap<String, String> = HashMap::new();
+
+    let contents = fs::read_to_string("localconfig.vdf")?;
+    let config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
     let mut vdf = config.clone();
 
     let apps = config.software.valve.steam.apps.values;
-
-    let mut results: Vec<(String, String)> = Vec::new();
-
     for (appid, values) in apps.keys().zip(apps.values()) {
         let values = values.clone().deserialize_into::<HashMap<String, Value>>();
         for (key, value) in &values.unwrap() {
@@ -120,25 +72,32 @@ fn main() -> keyvalues_serde::Result<()> {
             if key == OPTION {
                 let value = value.unwrap();
                 let appid = appid.to_string();
-                results.push((appid, value));
+                results.insert(appid, value);
             }
         }
     }
 
-    let results = results[0].clone();
-    let appid = results.0;
-    let old_value = results.1;
+    println!("App IDs: {:?}", results.keys());
+
+    let appid = "3205720";
+    let old_value = results.get(appid).map_or("", |v| v);
     let new_value = "BEEPBEEP".to_string();
 
-    if old_value != new_value {
-        println!("{} != {}", old_value, new_value);
+    if *old_value != new_value {
+        println!("App ID: {}", appid);
+        println!("Check: {} != {}", old_value, new_value);
 
         let mut map = HashMap::new();
-        map.insert(OPTION.to_string(), &new_value);
+        map.insert(OPTION.to_string(), new_value);
 
         let value = serde_value::to_value(map).unwrap();
 
-        vdf.software.valve.steam.apps.values.insert(appid, value);
+        vdf.software
+            .valve
+            .steam
+            .apps
+            .values
+            .insert(appid.to_string(), value);
 
         let serialized = keyvalues_serde::to_string_with_key(&vdf, KEY)?;
 
