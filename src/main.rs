@@ -1,17 +1,16 @@
 use serde::{Deserialize, Serialize};
 use serde_value::Value;
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::Write;
 
 const OPTION: &str = "LaunchOptions";
+const KEY: &str = "UserLocalConfigStore";
 
 const VDF_TEXT: &str = r##"
 // this file defines the contents of the platform menu
 "UserLocalConfigStore"
 {
-    "Broadcast"
-	{
-		"Permissions"		"1"
-	}
     "Software"
     {
         "Valve"
@@ -54,6 +53,10 @@ const VDF_TEXT: &str = r##"
             }
         }
     }
+    "Broadcast"
+	{
+		"Permissions"		"1"
+	}
 }
 "##;
 
@@ -95,13 +98,12 @@ struct Apps {
 }
 
 fn main() -> keyvalues_serde::Result<()> {
-    let user_local_config_store: UserLocalConfigStore = keyvalues_serde::from_str(VDF_TEXT)?;
-    println!("VDF: {:#?}", user_local_config_store);
+    let config: UserLocalConfigStore = keyvalues_serde::from_str(VDF_TEXT)?;
+    let mut vdf = config.clone();
+    println!("VDF: {:#?}", vdf);
 
-    let mut vdf = user_local_config_store.clone();
-
-    let apps = user_local_config_store.software.valve.steam.apps.values;
-    println!("{:#?}", apps);
+    let apps = config.software.valve.steam.apps.values;
+    println!("Apps: {:#?}", apps);
 
     let mut results: Vec<(String, String)> = Vec::new();
 
@@ -139,9 +141,12 @@ fn main() -> keyvalues_serde::Result<()> {
 
     println!("VDF: {:#?}", vdf);
 
-    let test = keyvalues_serde::to_string(&vdf)?;
+    let serialized = keyvalues_serde::to_string_with_key(&vdf, KEY)?;
 
-    println!("Test: {:#?}", test);
+    println!("Serialized: {:#?}", serialized);
+
+    let mut file = File::create("test.vdf")?;
+    file.write_all(serialized.as_bytes())?;
 
     Ok(())
 }
