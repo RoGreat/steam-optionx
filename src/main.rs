@@ -120,38 +120,31 @@ fn main() -> keyvalues_serde::Result<()> {
             if key == OPTION {
                 let value = value.unwrap();
                 let appid = appid.to_string();
-                println!();
-                println!("App ID: {:#?}", appid);
-                println!("Key: {:#?}", key);
-                println!("Value: {:#?}", value);
                 results.push((appid, value));
             }
         }
     }
 
-    println!();
-    println!("Results: {:#?}", results);
-
-    let mut map = HashMap::new();
-    let new_value = "BEEPBEEP".to_string();
-    map.insert(OPTION.to_string(), &new_value);
-
     let results = results[0].clone();
     let appid = results.0;
     let old_value = results.1;
+    let new_value = "BEEPBEEP".to_string();
 
     if old_value != new_value {
         println!("{} != {}", old_value, new_value);
+
+        let mut map = HashMap::new();
+        map.insert(OPTION.to_string(), &new_value);
+
+        let value = serde_value::to_value(map).unwrap();
+
+        vdf.software.valve.steam.apps.values.insert(appid, value);
+
+        let serialized = keyvalues_serde::to_string_with_key(&vdf, KEY)?;
+
+        let mut file = File::create("test.vdf")?;
+        file.write_all(serialized.as_bytes())?;
     }
-
-    let value = serde_value::to_value(map).unwrap();
-
-    vdf.software.valve.steam.apps.values.insert(appid, value);
-
-    let serialized = keyvalues_serde::to_string_with_key(&vdf, KEY)?;
-
-    let mut file = File::create("test.vdf")?;
-    file.write_all(serialized.as_bytes())?;
 
     Ok(())
 }
