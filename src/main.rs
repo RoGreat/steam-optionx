@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_value::Value;
 use std::collections::HashMap;
-use std::fs;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::Write;
 
 const OPTION: &str = "LaunchOptions";
