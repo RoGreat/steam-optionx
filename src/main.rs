@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_value::Value;
 use std::collections::HashMap;
 
@@ -51,38 +51,43 @@ const VDF_TEXT: &str = r##"
 }
 "##;
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 struct UserLocalConfigStore {
     software: Software,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 struct Software {
     valve: Valve,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 struct Valve {
     steam: Steam,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 struct Steam {
     apps: Apps,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 struct Apps {
     #[serde(flatten)]
     values: HashMap<String, Value>,
 }
 
 fn main() -> keyvalues_serde::Result<()> {
+    const OPTION: &str = "LaunchOptions";
+
     let user_local_config_store: UserLocalConfigStore = keyvalues_serde::from_str(VDF_TEXT)?;
     let apps = user_local_config_store.software.valve.steam.apps.values;
+    println!("{:#?}", apps);
+
+    let mut results: Vec<(String, String)> = Vec::new();
 
     for (appid, values) in apps.keys().zip(apps.values()) {
         let values = values.clone().deserialize_into::<HashMap<String, Value>>();
@@ -92,14 +97,28 @@ fn main() -> keyvalues_serde::Result<()> {
                 Ok(_) => {}
                 Err(_) => continue,
             }
-            if key == "LaunchOptions" {
+            if key == OPTION {
+                let value = value.unwrap();
+                let appid = appid.to_string();
                 println!();
                 println!("App ID: {:#?}", appid);
                 println!("Key: {:#?}", key);
-                println!("Value: {:#?}", value.unwrap());
+                println!("Value: {:#?}", value);
+                results.push((appid, value));
             }
         }
     }
+
+    println!("Results: {:#?}", results);
+
+    let app = Apps {
+        values: HashMap::from([(
+            results[0].clone().0,
+            serde_value::to_value((OPTION, "BEEPBEEP")).unwrap(),
+        )]),
+    };
+
+    println!("App: {:#?}", app);
 
     Ok(())
 }
