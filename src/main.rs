@@ -88,9 +88,7 @@ fn main() -> keyvalues_serde::Result<()> {
 
         let mut map = HashMap::new();
         map.insert(OPTION.to_string(), new_value);
-
         let value = serde_value::to_value(map).unwrap();
-
         vdf.software
             .valve
             .steam
@@ -99,7 +97,6 @@ fn main() -> keyvalues_serde::Result<()> {
             .insert(appid.to_string(), value);
 
         let serialized = keyvalues_serde::to_string_with_key(&vdf, KEY)?;
-
         let mut file = File::create("test.vdf")?;
         file.write_all(serialized.as_bytes())?;
     }
