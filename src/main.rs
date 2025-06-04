@@ -50,12 +50,20 @@ struct Apps {
 // Inputs:
 // Filepath of vdf
 // Selected App ID
-// Global - envs, cmds, args
-// PerGame - envs, cmds, args
+// Global launch options
+// - PerGame override
+// Don't overcomplicate it!
 fn main() -> keyvalues_serde::Result<()> {
+    // Inputs
+    let option = "";
+    let global = "gamemoderun %command%";
+    let appid = "3205720";
+    let filename = "localconfig.vdf";
+
+    let mut new_value = "";
     let mut results: HashMap<String, String> = HashMap::new();
 
-    let contents = fs::read_to_string("localconfig.vdf")?;
+    let contents = fs::read_to_string(filename)?;
     let config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
     let mut vdf = config.clone();
 
@@ -77,12 +85,23 @@ fn main() -> keyvalues_serde::Result<()> {
     }
 
     println!("App IDs: {:?}", results.keys());
-
-    let appid = "3205720";
     let old_value = results.get(appid).map_or("", |v| v);
-    let new_value = "BEEPBEEP".to_string();
 
-    if *old_value != new_value {
+    if option.is_empty() {
+        println!("Option is not set");
+        if global.is_empty() {
+            println!("Global is not set");
+            new_value = old_value;
+        } else {
+            println!("Global is set");
+            new_value = global;
+        }
+    } else {
+        println!("Option is set");
+        new_value = option;
+    }
+
+    if *old_value != *new_value {
         println!("App ID: {}", appid);
         println!("Check: {} != {}", old_value, new_value);
 
