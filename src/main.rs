@@ -1,7 +1,5 @@
 use serde::Deserialize;
 use serde_value::Value;
-//use std::collections::BTreeMap as Map;
-use std::any::{Any, TypeId};
 use std::collections::HashMap;
 
 const VDF_TEXT: &str = r##"
@@ -84,25 +82,21 @@ struct Apps {
 
 fn main() -> keyvalues_serde::Result<()> {
     let user_local_config_store: UserLocalConfigStore = keyvalues_serde::from_str(VDF_TEXT)?;
-    let appid = user_local_config_store.software.valve.steam.apps.id;
+    let apps = user_local_config_store.software.valve.steam.apps.id;
 
-    for id in appid.keys() {
-        println!("{:#?}", id);
-    }
-
-    for y in appid.values() {
-        let z = y.clone().deserialize_into::<HashMap<String, Value>>();
-        for (option, value) in &z.unwrap() {
-            let test = value.clone().deserialize_into::<String>();
-            match test {
+    for (appid, values) in apps.keys().zip(apps.values()) {
+        let values = values.clone().deserialize_into::<HashMap<String, Value>>();
+        for (option, value) in &values.unwrap() {
+            let value = value.clone().deserialize_into::<String>();
+            match value {
                 Ok(_) => {}
                 Err(_) => continue,
             }
             if option == "LaunchOptions" {
                 println!();
-                //println!("{:#?}", id);
-                println!("{:#?}", option);
-                println!("{:#?}", test.unwrap());
+                println!("App ID: {:#?}", appid);
+                println!("Option: {:#?}", option);
+                println!("Value: {:#?}", value.unwrap());
             }
         }
     }
