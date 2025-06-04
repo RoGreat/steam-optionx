@@ -52,6 +52,10 @@ const VDF_TEXT: &str = r##"
                 }
             }
         }
+        "Broadcast"
+        {
+            "Permissions"		"1"
+		}
     }
     "Broadcast"
 	{
@@ -100,10 +104,8 @@ struct Apps {
 fn main() -> keyvalues_serde::Result<()> {
     let config: UserLocalConfigStore = keyvalues_serde::from_str(VDF_TEXT)?;
     let mut vdf = config.clone();
-    println!("VDF: {:#?}", vdf);
 
     let apps = config.software.valve.steam.apps.values;
-    println!("Apps: {:#?}", apps);
 
     let mut results: Vec<(String, String)> = Vec::new();
 
@@ -131,19 +133,22 @@ fn main() -> keyvalues_serde::Result<()> {
     println!("Results: {:#?}", results);
 
     let mut map = HashMap::new();
+    let new_value = "BEEPBEEP".to_string();
+    map.insert(OPTION.to_string(), &new_value);
 
-    map.insert(OPTION.to_string(), "BEEPBEEP".to_string());
+    let results = results[0].clone();
+    let appid = results.0;
+    let old_value = results.1;
 
-    let appid = results[0].clone().0;
+    if old_value != new_value {
+        println!("{} != {}", old_value, new_value);
+    }
+
     let value = serde_value::to_value(map).unwrap();
 
     vdf.software.valve.steam.apps.values.insert(appid, value);
 
-    println!("VDF: {:#?}", vdf);
-
     let serialized = keyvalues_serde::to_string_with_key(&vdf, KEY)?;
-
-    println!("Serialized: {:#?}", serialized);
 
     let mut file = File::create("test.vdf")?;
     file.write_all(serialized.as_bytes())?;
