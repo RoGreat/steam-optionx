@@ -1,124 +1,120 @@
-use serde::{Deserialize, Serialize};
-use serde_value::Value;
-use std::collections::HashMap;
-use std::fs::{self, File};
-use std::io::Write;
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
+#![allow(rustdoc::missing_crate_level_docs)] // it's an example
 
-const OPTION: &str = "LaunchOptions";
-const KEY: &str = "UserLocalConfigStore";
+use eframe::egui;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "PascalCase")]
-struct UserLocalConfigStore {
-    software: Software,
-    #[serde(flatten)]
-    other: HashMap<String, Value>,
+fn main() -> eframe::Result {
+    env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size([640.0, 240.0]) // wide enough for the drag-drop overlay text
+            .with_drag_and_drop(true),
+        ..Default::default()
+    };
+    eframe::run_native(
+        "Native file dialogs and drag-and-drop files",
+        options,
+        Box::new(|_cc| Ok(Box::<MyApp>::default())),
+    )
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "PascalCase")]
-struct Software {
-    valve: Valve,
-    #[serde(flatten)]
-    other: HashMap<String, Value>,
+#[derive(Default)]
+struct MyApp {
+    dropped_files: Vec<egui::DroppedFile>,
+    picked_path: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "PascalCase")]
-struct Valve {
-    steam: Steam,
-    #[serde(flatten)]
-    other: HashMap<String, Value>,
-}
+impl eframe::App for MyApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.label("Drag-and-drop files onto the window!");
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct Steam {
-    apps: Apps,
-    #[serde(flatten)]
-    other: HashMap<String, Value>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct Apps {
-    #[serde(flatten)]
-    values: HashMap<String, Value>,
-}
-
-// Need to list all App IDs and put it into a table
-// Later will use an API to figure out app names
-//
-// Inputs:
-// Filepath of vdf
-// Selected App ID
-// Global launch options
-// - PerGame override
-// Don't overcomplicate it!
-fn main() -> keyvalues_serde::Result<()> {
-    // Inputs
-    let option = "";
-    let global = "gamemoderun %command%";
-    let appid = "3205720";
-    let filename = "localconfig.vdf";
-
-    let mut new_value = "";
-    let mut results: HashMap<String, String> = HashMap::new();
-
-    let contents = fs::read_to_string(filename)?;
-    let config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
-    let mut vdf = config.clone();
-
-    let apps = config.software.valve.steam.apps.values;
-    for (appid, values) in apps.keys().zip(apps.values()) {
-        let values = values.clone().deserialize_into::<HashMap<String, Value>>();
-        for (key, value) in &values.unwrap() {
-            let value = value.clone().deserialize_into::<String>();
-            match value {
-                Ok(_) => {}
-                Err(_) => continue,
+            if ui.button("Open file…").clicked() {
+                if let Some(path) = rfd::FileDialog::new().pick_file() {
+                    self.picked_path = Some(path.display().to_string());
+                }
             }
-            if key == OPTION {
-                let value = value.unwrap();
-                let appid = appid.to_string();
-                results.insert(appid, value);
+
+            if let Some(picked_path) = &self.picked_path {
+                ui.horizontal(|ui| {
+                    ui.label("Picked file:");
+                    ui.monospace(picked_path);
+                });
             }
-        }
+
+            // Show dropped files (if any):
+            if !self.dropped_files.is_empty() {
+                ui.group(|ui| {
+                    ui.label("Dropped files:");
+
+                    for file in &self.dropped_files {
+                        let mut info = if let Some(path) = &file.path {
+                            path.display().to_string()
+                        } else if !file.name.is_empty() {
+                            file.name.clone()
+                        } else {
+                            "???".to_owned()
+                        };
+
+                        let mut additional_info = vec![];
+                        if !file.mime.is_empty() {
+                            additional_info.push(format!("type: {}", file.mime));
+                        }
+                        if let Some(bytes) = &file.bytes {
+                            additional_info.push(format!("{} bytes", bytes.len()));
+                        }
+                        if !additional_info.is_empty() {
+                            info += &format!(" ({})", additional_info.join(", "));
+                        }
+
+                        ui.label(info);
+                    }
+                });
+            }
+        });
+
+        preview_files_being_dropped(ctx);
+
+        // Collect dropped files:
+        ctx.input(|i| {
+            if !i.raw.dropped_files.is_empty() {
+                self.dropped_files.clone_from(&i.raw.dropped_files);
+            }
+        });
     }
+}
 
-    println!("App IDs: {:?}", results.keys());
-    let old_value = results.get(appid).map_or("", |v| v);
+/// Preview hovering files:
+fn preview_files_being_dropped(ctx: &egui::Context) {
+    use egui::{Align2, Color32, Id, LayerId, Order, TextStyle};
+    use std::fmt::Write as _;
 
-    if option.is_empty() {
-        println!("Option is not set");
-        if global.is_empty() {
-            println!("Global is not set");
-            new_value = old_value;
-        } else {
-            println!("Global is set");
-            new_value = global;
-        }
-    } else {
-        println!("Option is set");
-        new_value = option;
+    if !ctx.input(|i| i.raw.hovered_files.is_empty()) {
+        let text = ctx.input(|i| {
+            let mut text = "Dropping files:\n".to_owned();
+            for file in &i.raw.hovered_files {
+                if let Some(path) = &file.path {
+                    write!(text, "\n{}", path.display()).ok();
+                } else if !file.mime.is_empty() {
+                    write!(text, "\n{}", file.mime).ok();
+                } else {
+                    text += "\n???";
+                }
+            }
+            text
+        });
+
+        let painter =
+            ctx.layer_painter(LayerId::new(Order::Foreground, Id::new("file_drop_target")));
+
+        let screen_rect = ctx.screen_rect();
+        painter.rect_filled(screen_rect, 0.0, Color32::from_black_alpha(192));
+        painter.text(
+            screen_rect.center(),
+            Align2::CENTER_CENTER,
+            text,
+            TextStyle::Heading.resolve(&ctx.style()),
+            Color32::WHITE,
+        );
     }
-
-    if *old_value != *new_value {
-        println!("App ID: {}", appid);
-        println!("Check: {} != {}", old_value, new_value);
-
-        let mut map = HashMap::new();
-        map.insert(OPTION.to_string(), new_value);
-        let value = serde_value::to_value(map).unwrap();
-        vdf.software
-            .valve
-            .steam
-            .apps
-            .values
-            .insert(appid.to_string(), value);
-
-        let serialized = keyvalues_serde::to_string_with_key(&vdf, KEY)?;
-        let mut file = File::create("test.vdf")?;
-        file.write_all(serialized.as_bytes())?;
-    }
-
-    Ok(())
 }
