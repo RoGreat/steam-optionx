@@ -1,8 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
-#![allow(rustdoc::missing_crate_level_docs)] // it's an example
 
-use dirs;
+use directories::BaseDirs;
 use eframe::egui;
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::path::PathBuf;
 
@@ -21,6 +21,22 @@ fn main() -> eframe::Result {
     )
 }
 
+#[derive(Default, Serialize, Deserialize)]
+struct Config {
+    steam_config: String,
+}
+
+fn userdata() -> PathBuf {
+    match env::consts::OS {
+        "windows" => PathBuf::from(r"C:\Program Files (x86)\Steam\userdata"),
+        _ => BaseDirs::new()
+            .unwrap()
+            .data_dir()
+            .to_path_buf()
+            .join("Steam/userdata"),
+    }
+}
+
 #[derive(Default)]
 struct MyApp {
     picked_path: Option<String>,
@@ -30,28 +46,23 @@ impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("Find 'Steam/userdata/.../config/localconfig.vdf'");
-            let mut path;
-            if ui.button("Open file…").clicked() {
-                match env::consts::OS {
-                    "windows" => {
-                        path = PathBuf::from(r"C:\Program Files (x86)\Steam\userdata");
-                    }
-                    "macos" => {
-                        path = dirs::home_dir().unwrap();
-                        path.push("Library/Application Support/Steam/userdata");
-                    }
-                    _ => {
-                        path = dirs::home_dir().unwrap();
-                        path.push(".local/share/Steam/userdata");
-                    }
-                }
 
+            let config: Config = confy::load("steam-optionx", None).unwrap();
+            if !config.steam_config.is_empty() {
+                self.picked_path = Some(config.steam_config);
+            }
+
+            if ui.button("Open file…").clicked() {
                 if let Some(path) = rfd::FileDialog::new()
                     .add_filter("text", &["vdf"])
-                    .set_directory(path)
+                    .set_directory(userdata())
                     .pick_file()
                 {
                     self.picked_path = Some(path.display().to_string());
+                    let config = Config {
+                        steam_config: self.picked_path.clone().unwrap(),
+                    };
+                    confy::store("steam-optionx", None, config).unwrap();
                 }
             }
 
