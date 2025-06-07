@@ -16,6 +16,7 @@ pkgs.mkShell rec {
     xorg.libXrandr
     wayland
     libxkbcommon
+    openssl
   ];
 
   LD_LIBRARY_PATH = builtins.foldl' (a: b: "${a}:${b}/lib") "${pkgs.vulkan-loader}/lib" buildInputs;

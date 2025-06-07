@@ -1,13 +1,16 @@
 #![windows_subsystem = "windows"]
 
+mod api;
+mod vdf;
+use api::get_game_names;
 use directories::BaseDirs;
 use eframe::egui;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::path::PathBuf;
-mod vdf;
 
 fn main() -> eframe::Result {
+    _ = get_game_names();
     let config: Config = confy::load("steam-optionx", None).unwrap();
     let picked_path = Some(config.steam_config);
     let app_ids = Some(vdf::appids(picked_path.clone().unwrap()).unwrap());
