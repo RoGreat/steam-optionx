@@ -5,23 +5,31 @@ use eframe::egui;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::path::PathBuf;
+mod vdf;
 
 fn main() -> eframe::Result {
-    env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
+    let config: Config = confy::load("steam-optionx", None).unwrap();
+    let picked_path = Some(config.steam_config);
+    let app_ids = Some(vdf::appids(picked_path.clone().unwrap()).unwrap());
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([640.0, 240.0]) // wide enough for the drag-drop overlay text
+            .with_inner_size([640.0, 240.0])
             .with_drag_and_drop(true),
         ..Default::default()
     };
     eframe::run_native(
         "Steam OptionX",
         options,
-        Box::new(|_cc| Ok(Box::<MyApp>::default())),
+        Box::new(|_cc| {
+            Ok(Box::new(EguiApp {
+                picked_path: picked_path,
+                app_ids: app_ids,
+            }))
+        }),
     )
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 struct Config {
     steam_config: String,
 }
@@ -38,19 +46,15 @@ fn userdata() -> PathBuf {
 }
 
 #[derive(Default)]
-struct MyApp {
+struct EguiApp {
     picked_path: Option<String>,
+    app_ids: Option<Vec<String>>,
 }
 
-impl eframe::App for MyApp {
+impl eframe::App for EguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.label("Find 'Steam/userdata/.../config/localconfig.vdf'");
-
-            let config: Config = confy::load("steam-optionx", None).unwrap();
-            if !config.steam_config.is_empty() {
-                self.picked_path = Some(config.steam_config);
-            }
+            ui.label("Find 'Steam/userdata/########/config/localconfig.vdf'");
 
             if ui.button("Open file…").clicked() {
                 if let Some(path) = rfd::FileDialog::new()
@@ -63,6 +67,8 @@ impl eframe::App for MyApp {
                         steam_config: self.picked_path.clone().unwrap(),
                     };
                     confy::store("steam-optionx", None, config).unwrap();
+                    self.app_ids = Some(vdf::appids(self.picked_path.clone().unwrap()).unwrap());
+                    println!("{:?}", self.app_ids);
                 }
             }
 
@@ -73,22 +79,28 @@ impl eframe::App for MyApp {
                 });
             }
 
-            egui::Grid::new("some_unique_id").show(ui, |ui| {
-                ui.label("First row, first column");
-                ui.label("First row, second column");
-                ui.end_row();
+            egui::Grid::new("game_list").show(ui, |ui| {
+                if let Some(ids) = &self.app_ids {
+                    for id in ids.iter() {
+                        ui.label(id);
+                        ui.end_row();
+                    }
+                }
+                //ui.label("First row, first column");
+                //ui.label("First row, second column");
+                //ui.end_row();
 
-                ui.label("Second row, first column");
-                ui.label("Second row, second column");
-                ui.label("Second row, third column");
-                ui.end_row();
+                //ui.label("Second row, first column");
+                //ui.label("Second row, second column");
+                //ui.label("Second row, third column");
+                //ui.end_row();
 
-                ui.horizontal(|ui| {
-                    ui.label("Same");
-                    ui.label("cell");
-                });
-                ui.label("Third row, second column");
-                ui.end_row();
+                //ui.horizontal(|ui| {
+                //    ui.label("Same");
+                //    ui.label("cell");
+                //});
+                //ui.label("Third row, second column");
+                //ui.end_row();
             });
         });
     }

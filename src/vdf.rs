@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
 use serde_value::Value;
 use std::collections::HashMap;
+use std::error;
 use std::fs::{self, File};
 use std::io::Write;
+use std::path::PathBuf;
 
 const OPTION: &str = "LaunchOptions";
 const KEY: &str = "UserLocalConfigStore";
@@ -44,6 +46,17 @@ struct Apps {
     values: HashMap<String, Value>,
 }
 
+pub fn appids(filename: String) -> Result<Vec<String>, Box<dyn error::Error>> {
+    let mut results = vec![];
+    let contents = fs::read_to_string(filename)?;
+    let config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
+    let apps = config.software.valve.steam.apps.values;
+    for appid in apps.keys() {
+        results.push(appid.clone());
+    }
+    Ok(results)
+}
+
 // Need to list all App IDs and put it into a table
 // Later will use an API to figure out app names
 //
@@ -55,70 +68,45 @@ struct Apps {
 // Don't overcomplicate it!
 fn main() -> keyvalues_serde::Result<()> {
     // Inputs
-    let option = "";
-    let global = "gamemoderun %command%";
-    let appid = "3205720";
-    let filename = "localconfig.vdf";
+    //let option = "";
+    //let global = "gamemoderun %command%";
+    //let appid = "3205720";
+    //let filename = "localconfig.vdf";
 
-    let mut new_value = "";
-    let mut results: HashMap<String, String> = HashMap::new();
+    //let results = deserialize(filename);
 
-    let contents = fs::read_to_string(filename)?;
-    let config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
-    let mut vdf = config.clone();
+    //let old_value = results.get(appid).map_or("", |v| v);
+    //let new_value;
 
-    let apps = config.software.valve.steam.apps.values;
-    for (appid, values) in apps.keys().zip(apps.values()) {
-        let values = values.clone().deserialize_into::<HashMap<String, Value>>();
-        for (key, value) in &values.unwrap() {
-            let value = value.clone().deserialize_into::<String>();
-            match value {
-                Ok(_) => {}
-                Err(_) => continue,
-            }
-            if key == OPTION {
-                let value = value.unwrap();
-                let appid = appid.to_string();
-                results.insert(appid, value);
-            }
-        }
-    }
+    //if option.is_empty() {
+    //    if global.is_empty() {
+    //        new_value = old_value;
+    //    } else {
+    //        new_value = global;
+    //    }
+    //} else {
+    //    new_value = option;
+    //}
 
-    println!("App IDs: {:?}", results.keys());
-    let old_value = results.get(appid).map_or("", |v| v);
+    //if *old_value != *new_value {
+    //    println!("App ID: {}", appid);
+    //    println!("Check: {} != {}", old_value, new_value);
 
-    if option.is_empty() {
-        println!("Option is not set");
-        if global.is_empty() {
-            println!("Global is not set");
-            new_value = old_value;
-        } else {
-            println!("Global is set");
-            new_value = global;
-        }
-    } else {
-        println!("Option is set");
-        new_value = option;
-    }
+    //    let mut map = HashMap::new();
+    //    map.insert(OPTION.to_string(), new_value);
+    //    let value = serde_value::to_value(map).unwrap();
+    //    new_config
+    //        .software
+    //        .valve
+    //        .steam
+    //        .apps
+    //        .values
+    //        .insert(appid.to_string(), value);
 
-    if *old_value != *new_value {
-        println!("App ID: {}", appid);
-        println!("Check: {} != {}", old_value, new_value);
-
-        let mut map = HashMap::new();
-        map.insert(OPTION.to_string(), new_value);
-        let value = serde_value::to_value(map).unwrap();
-        vdf.software
-            .valve
-            .steam
-            .apps
-            .values
-            .insert(appid.to_string(), value);
-
-        let serialized = keyvalues_serde::to_string_with_key(&vdf, KEY)?;
-        let mut file = File::create("test.vdf")?;
-        file.write_all(serialized.as_bytes())?;
-    }
+    //    let serialized = keyvalues_serde::to_string_with_key(&new_config, KEY)?;
+    //    let mut file = File::create("test.vdf")?;
+    //    file.write_all(serialized.as_bytes())?;
+    //}
 
     Ok(())
 }
