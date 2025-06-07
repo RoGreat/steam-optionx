@@ -1,4 +1,4 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
+#![windows_subsystem = "windows"]
 
 use directories::BaseDirs;
 use eframe::egui;
@@ -79,28 +79,15 @@ impl eframe::App for EguiApp {
                 });
             }
 
-            egui::Grid::new("game_list").show(ui, |ui| {
-                if let Some(ids) = &self.app_ids {
-                    for id in ids.iter() {
-                        ui.label(id);
-                        ui.end_row();
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                egui::Grid::new("game_list").show(ui, |ui| {
+                    if let Some(ids) = &self.app_ids {
+                        for id in ids.iter() {
+                            ui.label(id);
+                            ui.end_row();
+                        }
                     }
-                }
-                //ui.label("First row, first column");
-                //ui.label("First row, second column");
-                //ui.end_row();
-
-                //ui.label("Second row, first column");
-                //ui.label("Second row, second column");
-                //ui.label("Second row, third column");
-                //ui.end_row();
-
-                //ui.horizontal(|ui| {
-                //    ui.label("Same");
-                //    ui.label("cell");
-                //});
-                //ui.label("Third row, second column");
-                //ui.end_row();
+                });
             });
         });
     }

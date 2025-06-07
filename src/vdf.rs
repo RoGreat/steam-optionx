@@ -66,47 +66,47 @@ pub fn appids(filename: String) -> Result<Vec<String>, Box<dyn error::Error>> {
 // Global launch options
 // - PerGame override
 // Don't overcomplicate it!
-fn main() -> keyvalues_serde::Result<()> {
-    // Inputs
-    //let option = "";
-    //let global = "gamemoderun %command%";
-    //let appid = "3205720";
-    //let filename = "localconfig.vdf";
+//fn main() -> keyvalues_serde::Result<()> {
+// Inputs
+//let option = "";
+//let global = "gamemoderun %command%";
+//let appid = "3205720";
+//let filename = "localconfig.vdf";
 
-    //let results = deserialize(filename);
+//let results = deserialize(filename);
 
-    //let old_value = results.get(appid).map_or("", |v| v);
-    //let new_value;
+//let old_value = results.get(appid).map_or("", |v| v);
+//let new_value;
 
-    //if option.is_empty() {
-    //    if global.is_empty() {
-    //        new_value = old_value;
-    //    } else {
-    //        new_value = global;
-    //    }
-    //} else {
-    //    new_value = option;
-    //}
+//if option.is_empty() {
+//    if global.is_empty() {
+//        new_value = old_value;
+//    } else {
+//        new_value = global;
+//    }
+//} else {
+//    new_value = option;
+//}
 
-    //if *old_value != *new_value {
-    //    println!("App ID: {}", appid);
-    //    println!("Check: {} != {}", old_value, new_value);
+//if *old_value != *new_value {
+//    println!("App ID: {}", appid);
+//    println!("Check: {} != {}", old_value, new_value);
 
-    //    let mut map = HashMap::new();
-    //    map.insert(OPTION.to_string(), new_value);
-    //    let value = serde_value::to_value(map).unwrap();
-    //    new_config
-    //        .software
-    //        .valve
-    //        .steam
-    //        .apps
-    //        .values
-    //        .insert(appid.to_string(), value);
+//    let mut map = HashMap::new();
+//    map.insert(OPTION.to_string(), new_value);
+//    let value = serde_value::to_value(map).unwrap();
+//    new_config
+//        .software
+//        .valve
+//        .steam
+//        .apps
+//        .values
+//        .insert(appid.to_string(), value);
 
-    //    let serialized = keyvalues_serde::to_string_with_key(&new_config, KEY)?;
-    //    let mut file = File::create("test.vdf")?;
-    //    file.write_all(serialized.as_bytes())?;
-    //}
+//    let serialized = keyvalues_serde::to_string_with_key(&new_config, KEY)?;
+//    let mut file = File::create("test.vdf")?;
+//    file.write_all(serialized.as_bytes())?;
+//}
 
-    Ok(())
-}
+//Ok(())
+//}
