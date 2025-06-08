@@ -5,22 +5,27 @@ use std::collections::HashMap;
 
 #[derive(Debug, Deserialize)]
 struct AppList {
-    apps: Vec<Apps>,
-    //#[serde(flatten)]
-    //values: HashMap<String, Value>,
+    applist: Apps,
 }
 
 #[derive(Debug, Deserialize)]
 struct Apps {
+    apps: Vec<App>,
+}
+
+#[derive(Debug, Deserialize)]
+struct App {
     appid: u64,
     name: String,
 }
 
-pub fn get_game_names() -> Result<(), Box<dyn std::error::Error>> {
+pub fn get_game_names() -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
     let request: AppList = get("https://api.steampowered.com/ISteamApps/GetAppList/v2/")?.json()?;
-    println!("{:?}", request);
-    //for appid in request.values.values() {
-    //    println!("{:?}", appid);
-    //}
-    Ok(())
+    let apps = request.applist.apps;
+    let mut result = HashMap::new();
+    for app in apps {
+        result.insert(app.appid.to_string(), app.name);
+    }
+    println!("{:?}", result);
+    Ok(result)
 }

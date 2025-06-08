@@ -2,18 +2,20 @@
 
 mod api;
 mod vdf;
+
 use api::get_game_names;
 use directories::BaseDirs;
 use eframe::egui;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::path::PathBuf;
+use vdf::appids;
 
 fn main() -> eframe::Result {
     _ = get_game_names();
     let config: Config = confy::load("steam-optionx", None).unwrap();
     let picked_path = Some(config.steam_config);
-    let app_ids = Some(vdf::appids(picked_path.clone().unwrap()).unwrap());
+    let appids = Some(vdf::appids(picked_path.clone().unwrap()).unwrap());
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([640.0, 240.0])
@@ -26,7 +28,7 @@ fn main() -> eframe::Result {
         Box::new(|_cc| {
             Ok(Box::new(EguiApp {
                 picked_path: picked_path,
-                app_ids: app_ids,
+                appids: appids,
             }))
         }),
     )
@@ -51,7 +53,7 @@ fn userdata() -> PathBuf {
 #[derive(Default)]
 struct EguiApp {
     picked_path: Option<String>,
-    app_ids: Option<Vec<String>>,
+    appids: Option<Vec<String>>,
 }
 
 impl eframe::App for EguiApp {
@@ -70,8 +72,8 @@ impl eframe::App for EguiApp {
                         steam_config: self.picked_path.clone().unwrap(),
                     };
                     confy::store("steam-optionx", None, config).unwrap();
-                    self.app_ids = Some(vdf::appids(self.picked_path.clone().unwrap()).unwrap());
-                    println!("{:?}", self.app_ids);
+                    self.appids = Some(vdf::appids(self.picked_path.clone().unwrap()).unwrap());
+                    println!("{:?}", self.appids);
                 }
             }
 
@@ -83,8 +85,8 @@ impl eframe::App for EguiApp {
             }
 
             egui::ScrollArea::vertical().show(ui, |ui| {
-                egui::Grid::new("game_list").show(ui, |ui| {
-                    if let Some(ids) = &self.app_ids {
+                egui::Grid::new("games").show(ui, |ui| {
+                    if let Some(ids) = &self.appids {
                         for id in ids.iter() {
                             ui.label(id);
                             ui.end_row();
