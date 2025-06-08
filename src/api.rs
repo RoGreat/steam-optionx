@@ -1,7 +1,7 @@
 use reqwest::blocking::get;
 use serde::Deserialize;
-use serde_value::Value;
 use std::collections::HashMap;
+use std::error::Error;
 
 #[derive(Debug, Deserialize)]
 struct AppList {
@@ -19,13 +19,12 @@ struct App {
     name: String,
 }
 
-pub fn get_game_names() -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
+pub fn get_game_names() -> Result<HashMap<String, String>, Box<dyn Error>> {
+    let mut result = HashMap::new();
     let request: AppList = get("https://api.steampowered.com/ISteamApps/GetAppList/v2/")?.json()?;
     let apps = request.applist.apps;
-    let mut result = HashMap::new();
     for app in apps {
         result.insert(app.appid.to_string(), app.name);
     }
-    println!("{:?}", result);
     Ok(result)
 }

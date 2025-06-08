@@ -3,19 +3,19 @@
 mod api;
 mod vdf;
 
-use api::get_game_names;
 use directories::BaseDirs;
 use eframe::egui;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::env;
+use std::error::Error;
 use std::path::PathBuf;
-use vdf::appids;
 
 fn main() -> eframe::Result {
-    _ = get_game_names();
     let config: Config = confy::load("steam-optionx", None).unwrap();
     let picked_path = Some(config.steam_config);
     let appids = Some(vdf::appids(picked_path.clone().unwrap()).unwrap());
+    let game_names = Some(api::get_game_names().unwrap());
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([640.0, 240.0])
@@ -29,6 +29,7 @@ fn main() -> eframe::Result {
             Ok(Box::new(EguiApp {
                 picked_path: picked_path,
                 appids: appids,
+                game_names: game_names,
             }))
         }),
     )
@@ -54,6 +55,7 @@ fn userdata() -> PathBuf {
 struct EguiApp {
     picked_path: Option<String>,
     appids: Option<Vec<String>>,
+    game_names: Option<HashMap<String, String>>,
 }
 
 impl eframe::App for EguiApp {
@@ -86,10 +88,18 @@ impl eframe::App for EguiApp {
 
             egui::ScrollArea::vertical().show(ui, |ui| {
                 egui::Grid::new("games").show(ui, |ui| {
-                    if let Some(ids) = &self.appids {
-                        for id in ids.iter() {
-                            ui.label(id);
-                            ui.end_row();
+                    if let Some(appids) = &self.appids {
+                        if let Some(game_names) = &self.game_names {
+                            for appid in appids.iter() {
+                                let game_name = game_names.get(appid);
+                                if let Some(game_name) = game_name {
+                                    ui.hyperlink_to(
+                                        game_name,
+                                        "https://store.steampowered.com/app/".to_owned() + appid,
+                                    );
+                                    ui.end_row();
+                                }
+                            }
                         }
                     }
                 });

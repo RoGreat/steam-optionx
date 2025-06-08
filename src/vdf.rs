@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_value::Value;
 use std::collections::HashMap;
-use std::error;
+use std::error::Error;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::PathBuf;
@@ -46,7 +46,7 @@ struct Apps {
     values: HashMap<String, Value>,
 }
 
-pub fn appids(filename: String) -> Result<Vec<String>, Box<dyn error::Error>> {
+pub fn appids(filename: String) -> Result<Vec<String>, Box<dyn Error>> {
     let mut results = vec![];
     let contents = fs::read_to_string(filename)?;
     let config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
