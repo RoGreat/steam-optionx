@@ -2,7 +2,7 @@ use slint::{Model, ModelExt, ModelRc, SharedString, StandardListViewItem, VecMod
 use std::rc::Rc;
 
 slint::slint! {
-    import { HorizontalBox, VerticalBox, StandardTableView, GroupBox, StyleMetrics, LineEdit } from "std-widgets.slint";
+    import { Button, HorizontalBox, VerticalBox, StandardTableView, GroupBox, StyleMetrics, LineEdit, GridBox } from "std-widgets.slint";
 
     export global TableViewPageAdapter  {
         in property <[[StandardListViewItem]]> row_data: [
@@ -21,16 +21,48 @@ slint::slint! {
     export component TableViewPage inherits Window {
         property <int> sort-index: -1;
         property <bool> sort-ascending;
+        callback file-dialog;
+        callback reload-file;
 
         HorizontalBox {
             vertical-stretch: 1;
 
             GroupBox {
-                title: @tr("StandardTableView");
                 vertical-stretch: 0;
 
                 VerticalLayout {
                     spacing: StyleMetrics.layout-spacing;
+
+                    VerticalLayout {
+                        Text {
+                            text: @tr("Open 'Steam/userdata/XXXXXXXX/config/localconfig.vdf':");
+                        }
+
+                        GridLayout {
+                            HorizontalLayout {
+                                spacing: 5px;
+
+                                file_path := LineEdit {
+                                    accepted => { root.reload-file() }
+                                }
+
+                                Button {
+                                    text: "Open file...";
+                                    clicked => { root.file-dialog() }
+                                }
+                            }
+                        }
+                    }
+
+                    VerticalLayout {
+                        Text {
+                            text: @tr("Filter by game:");
+                        }
+
+                        filter-edit := LineEdit {
+                            placeholder-text: @tr("Enter game...");
+                        }
+                    }
 
                     StandardTableView {
                         sort-ascending(index) => {
@@ -44,22 +76,12 @@ slint::slint! {
                         }
 
                         columns: [
-                            { title: @tr("Header 1") },
-                            { title: @tr("Header 2") },
+                            { title: @tr("Game") },
+                            { title: @tr("Launch Option") },
                             { title: @tr("Header 3") },
                             { title: @tr("Header 4") },
                         ];
                         rows: TableViewPageAdapter.filter_sort_model(TableViewPageAdapter.row_data, filter-edit.text, root.sort-index, root.sort-ascending);
-                    }
-
-                    VerticalLayout {
-                        Text {
-                            text: @tr("Filter by Header 1:");
-                        }
-
-                        filter-edit := LineEdit {
-                            placeholder-text: @tr("Enter filter text");
-                        }
                     }
                 }
            }
@@ -67,7 +89,7 @@ slint::slint! {
     }
 }
 
-pub fn main() {
+fn main() {
     let app = TableViewPage::new().unwrap();
 
     let row_data: Rc<VecModel<slint::ModelRc<StandardListViewItem>>> = Rc::new(VecModel::default());
@@ -127,3 +149,7 @@ fn filter_sort_model(
     }
     model
 }
+
+fn reload_file() {}
+
+fn file_dialog() {}
