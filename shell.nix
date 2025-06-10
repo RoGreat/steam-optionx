@@ -17,12 +17,9 @@ pkgs.mkShell {
   LD_LIBRARY_PATH =
     with pkgs;
     lib.makeLibraryPath [
-      ffmpeg
       fontconfig
       libglvnd
       libxkbcommon
-      skia
       wayland
-      xorg.libxcb
     ];
 }
