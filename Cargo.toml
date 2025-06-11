@@ -13,3 +13,6 @@ serde = { version = "1.0.219", features = ["derive"] }
 serde-value = "0.7.0"
 slint = "1.11.0"
 webbrowser = "1.0.4"
+
+[build-dependencies]
+slint-build = "1.11.0"

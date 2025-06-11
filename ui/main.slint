@@ -1,0 +1,68 @@
+import { VerticalBox, ListView, HorizontalBox, LineEdit, Button, StyleMetrics } from "std-widgets.slint";
+
+export global LinkHandler {
+    pure callback link-clicked(string);
+}
+
+component Hyperlink inherits Text {
+    in property <string> url;
+
+    area := TouchArea {
+        clicked => {
+            LinkHandler.link-clicked(root.url)
+        }
+    }
+}
+
+export global FileHandler {
+    pure callback reload-file;
+    pure callback file-dialog;
+}
+
+export component SteamOptionX inherits Window {
+    HorizontalBox {
+        VerticalLayout {
+            spacing: StyleMetrics.layout-spacing;
+
+            VerticalLayout {
+                Text {
+                    text: @tr("Open 'Steam/userdata/XXXXXXXX/config/localconfig.vdf':");
+                }
+
+                GridLayout {
+                    HorizontalLayout {
+                        spacing: StyleMetrics.layout-spacing;
+
+                        file_path := LineEdit {
+                            accepted => {
+                                FileHandler.reload-file()
+                            }
+                        }
+
+                        Button {
+                            text: "Open file...";
+                            clicked => {
+                                FileHandler.file-dialog()
+                            }
+                        }
+                    }
+                }
+            }
+
+            VerticalLayout {
+                Text {
+                    text: @tr("Filter by game:");
+                }
+
+                filter-edit := LineEdit {
+                    placeholder-text: @tr("Enter game...");
+                }
+
+                Hyperlink {
+                    text: @tr("Game");
+                    url: @tr("https://example.com");
+                }
+            }
+        }
+    }
+}
