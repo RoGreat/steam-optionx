@@ -2,7 +2,7 @@ use confy;
 use directories::BaseDirs;
 use rfd;
 use serde::{Deserialize, Serialize};
-use slint;
+use slint::{self, SharedString};
 use std::cell::RefCell;
 use std::default::Default;
 use std::env;
@@ -12,47 +12,49 @@ use webbrowser;
 
 slint::include_modules!();
 
-#[derive(Debug, Default, Serialize, Deserialize)]
-struct Config {
-    steam_config: String,
-}
-
 fn main() {
     let sox = SteamOptionX::new().unwrap();
-    let picked_path = Rc::new(RefCell::new(
-        confy::load::<Config>("steam-optionx", None)
+
+    #[derive(Debug, Default, Serialize, Deserialize)]
+    struct Config {
+        steam_config: String,
+    }
+    let config = Rc::new(RefCell::new(Config::default()));
+    sox.on_init_file({
+        let picked_path = confy::load("steam-optionx", None)
             .unwrap_or(Config::default())
-            .steam_config,
-    ));
-    println!("Start");
-    println!("{:?}", picked_path);
-    println!("End");
-    sox.global::<Function>().on_init_file({
-        let picked_path = picked_path.clone();
-        println!("Start 2");
-        println!("{:?}", picked_path);
-        println!("End 2");
-        move || picked_path.take().into()
+            .steam_config;
+        move || picked_path.clone().into()
     });
-    sox.global::<Function>()
+
+    sox.global::<LinkHandler>()
         .on_link_clicked(move |url| webbrowser::open(url.as_str()).unwrap_or(()));
-    sox.global::<Function>()
-        .on_reload_file(move |path, file_path| {
+    sox.on_reload_file({
+        let config = config.clone();
+        move |path, file_path| {
             if PathBuf::from(path.as_str()).is_file() {
+                config.borrow_mut().steam_config = path.to_string();
+                let _ = confy::store("steam-optionx", None, config.take());
                 path
             } else {
+                config.borrow_mut().steam_config = file_path.to_string();
+                let _ = confy::store("steam-optionx", None, config.take());
                 file_path
             }
-        });
-    sox.global::<Function>().on_file_dialog(|file_path| {
-        rfd::FileDialog::new()
-            .add_filter("text", &["vdf"])
-            .set_directory(userdata())
-            .pick_file()
-            .unwrap_or(file_path.to_string().into())
-            .to_str()
-            .unwrap_or(&file_path)
-            .into()
+        }
+    });
+    sox.on_file_dialog({
+        let config = config.clone();
+        move |file_path| {
+            let path: PathBuf = rfd::FileDialog::new()
+                .add_filter("text", &["vdf"])
+                .set_directory(userdata())
+                .pick_file()
+                .unwrap_or(PathBuf::from(file_path.as_str()));
+            config.borrow_mut().steam_config = path.to_str().unwrap_or("").to_string();
+            let _ = confy::store("steam-optionx", None, config.take());
+            SharedString::from(path.to_str().unwrap_or(""))
+        }
     });
 
     sox.run().unwrap();

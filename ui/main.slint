@@ -1,10 +1,7 @@
 import { HorizontalBox, StyleMetrics, LineEdit, Button } from "std-widgets.slint";
 
-export global Function {
-    pure callback link-clicked(string);
-    pure callback init-file() -> string;
-    callback reload-file(string, string) -> string;
-    callback file-dialog(string) -> string;
+export global LinkHandler {
+    callback link-clicked(string);
 }
 
 component Hyperlink inherits Text {
@@ -12,13 +9,16 @@ component Hyperlink inherits Text {
 
     area := TouchArea {
         clicked => {
-            Function.link-clicked(root.url)
+            LinkHandler.link-clicked(root.url)
         }
     }
 }
 
 export component SteamOptionX inherits Window {
-    in-out property <string> file-path: Function.init-file();
+    in-out property <string> file-path: init-file();
+    pure callback init-file() -> string;
+    callback reload-file(string, string) -> string;
+    callback file-dialog(string) -> string;
 
     title: @tr("SteamOptionX");
 
@@ -39,7 +39,7 @@ export component SteamOptionX inherits Window {
                             text: root.file-path;
 
                             accepted(path) => {
-                                root.file-path = Function.reload-file(path, root.file-path);
+                                root.file-path = reload-file(path, root.file-path);
                             }
                         }
 
@@ -47,7 +47,7 @@ export component SteamOptionX inherits Window {
                             text: "Open file...";
 
                             clicked => {
-                                root.file-path = Function.file-dialog(root.file-path)
+                                root.file-path = file-dialog(root.file-path)
                             }
                         }
                     }
