@@ -3,9 +3,11 @@ use directories::BaseDirs;
 use rfd;
 use serde::{Deserialize, Serialize};
 use slint;
+use std::cell::RefCell;
 use std::default::Default;
 use std::env;
 use std::path::PathBuf;
+use std::rc::Rc;
 use webbrowser;
 
 slint::include_modules!();
@@ -17,13 +19,21 @@ struct Config {
 
 fn main() {
     let sox = SteamOptionX::new().unwrap();
-
-    sox.global::<Function>().on_init_file(move || {
-        let config: Config = confy::load("steam-optionx", None).unwrap();
-        let picked_path = config.steam_config.as_str();
-        picked_path.to_string().into()
+    let picked_path = Rc::new(RefCell::new(
+        confy::load::<Config>("steam-optionx", None)
+            .unwrap_or(Config::default())
+            .steam_config,
+    ));
+    println!("Start");
+    println!("{:?}", picked_path);
+    println!("End");
+    sox.global::<Function>().on_init_file({
+        let picked_path = picked_path.clone();
+        println!("Start 2");
+        println!("{:?}", picked_path);
+        println!("End 2");
+        move || picked_path.take().into()
     });
-
     sox.global::<Function>()
         .on_link_clicked(move |url| webbrowser::open(url.as_str()).unwrap_or(()));
     sox.global::<Function>()

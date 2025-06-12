@@ -2,7 +2,7 @@ import { HorizontalBox, StyleMetrics, LineEdit, Button } from "std-widgets.slint
 
 export global Function {
     pure callback link-clicked(string);
-    callback init-file() -> string;
+    pure callback init-file() -> string;
     callback reload-file(string, string) -> string;
     callback file-dialog(string) -> string;
 }
@@ -18,12 +18,7 @@ component Hyperlink inherits Text {
 }
 
 export component SteamOptionX inherits Window {
-    in-out property <string> file-path;
-    init => {
-        debug("This ran");
-        root.file-path = Function.init-file();
-        debug(root.file-path);
-    }
+    in-out property <string> file-path: Function.init-file();
 
     title: @tr("SteamOptionX");
 
