@@ -51,9 +51,10 @@ fn main() {
                 .set_directory(userdata())
                 .pick_file()
                 .unwrap_or(PathBuf::from(file_path.as_str()));
-            config.borrow_mut().steam_config = path.to_str().unwrap_or("").to_string();
+            config.borrow_mut().steam_config =
+                path.to_str().unwrap_or(file_path.as_str()).to_string();
             let _ = confy::store("steam-optionx", None, config.take());
-            SharedString::from(path.to_str().unwrap_or(""))
+            SharedString::from(path.to_str().unwrap_or(file_path.as_str()))
         }
     });
 
