@@ -1,7 +1,10 @@
-import { VerticalBox, ListView, HorizontalBox, LineEdit, Button, StyleMetrics } from "std-widgets.slint";
+import { HorizontalBox, StyleMetrics, LineEdit, Button } from "std-widgets.slint";
 
-export global LinkHandler {
+export global Function {
     pure callback link-clicked(string);
+    callback init-file() -> string;
+    callback reload-file(string, string) -> string;
+    callback file-dialog(string) -> string;
 }
 
 component Hyperlink inherits Text {
@@ -9,17 +12,21 @@ component Hyperlink inherits Text {
 
     area := TouchArea {
         clicked => {
-            LinkHandler.link-clicked(root.url)
+            Function.link-clicked(root.url)
         }
     }
 }
 
-export global FileHandler {
-    pure callback reload-file;
-    pure callback file-dialog;
-}
-
 export component SteamOptionX inherits Window {
+    in-out property <string> file-path;
+    init => {
+        debug("This ran");
+        root.file-path = Function.init-file();
+        debug(root.file-path);
+    }
+
+    title: @tr("SteamOptionX");
+
     HorizontalBox {
         VerticalLayout {
             spacing: StyleMetrics.layout-spacing;
@@ -33,19 +40,26 @@ export component SteamOptionX inherits Window {
                     HorizontalLayout {
                         spacing: StyleMetrics.layout-spacing;
 
-                        file_path := LineEdit {
-                            accepted => {
-                                FileHandler.reload-file()
+                        LineEdit {
+                            text: root.file-path;
+
+                            accepted(path) => {
+                                root.file-path = Function.reload-file(path, root.file-path);
                             }
                         }
 
                         Button {
                             text: "Open file...";
+
                             clicked => {
-                                FileHandler.file-dialog()
+                                root.file-path = Function.file-dialog(root.file-path)
                             }
                         }
                     }
+                }
+
+                Text {
+                    text: root.file-path;
                 }
             }
 
