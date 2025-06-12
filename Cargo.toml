@@ -1,18 +1,34 @@
 [package]
 name = "steam-optionx"
 version = "0.1.0"
+authors = ["RoGreat <roguegreat@gmail.com>"]
 edition = "2024"
 
 [dependencies]
 confy = "1.0.0"
+dioxus = { version = "0.6.0", features = [] }
 directories = "6.0.0"
 keyvalues-serde = "0.2.2"
 reqwest = { version = "0.12.19", features = ["blocking", "json"] }
 rfd = "0.15.3"
 serde = { version = "1.0.219", features = ["derive"] }
 serde-value = "0.7.0"
-slint = "1.11.0"
 webbrowser = "1.0.4"
 
-[build-dependencies]
-slint-build = "1.11.0"
+[features]
+default = ["desktop"]
+web = ["dioxus/web"]
+desktop = ["dioxus/desktop"]
+mobile = ["dioxus/mobile"]
+
+[profile]
+
+[profile.wasm-dev]
+inherits = "dev"
+opt-level = 1
+
+[profile.server-dev]
+inherits = "dev"
+
+[profile.android-dev]
+inherits = "dev"
