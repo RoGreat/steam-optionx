@@ -1,13 +1,5 @@
-use dioxus::prelude::*;
+use leptos::prelude::*;
 
 fn main() {
-    dioxus::launch(app);
-}
-
-fn app() -> Element {
-    rsx! {
-        div {
-            "Hello world!"
-        }
-    }
+    leptos::mount::mount_to_body(|| view! { <p>"Hello, world!"</p> })
 }

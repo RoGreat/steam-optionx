@@ -1,84 +1,74 @@
 {
-  inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    flake-parts.url = "github:hercules-ci/flake-parts";
-    systems.url = "github:nix-systems/default";
+  description = "A basic Rust devshell for NixOS users developing Leptos";
 
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     rust-overlay.url = "github:oxalica/rust-overlay";
-    # crane.url = "github:ipetkov/crane";
-    # crane.inputs.nixpkgs.follows = "nixpkgs";
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
   outputs =
-    inputs:
-    inputs.flake-parts.lib.mkFlake { inherit inputs; } {
-      systems = import inputs.systems;
-
-      perSystem =
-        {
-          config,
-          self',
-          pkgs,
-          lib,
-          system,
-          ...
-        }:
-        let
-          rustToolchain = pkgs.rust-bin.stable.latest.default.override {
-            extensions = [
-              "rust-src"
-              "rust-analyzer"
-              "clippy"
-            ];
-          };
-          rustBuildInputs =
-            [
-              pkgs.openssl
-              pkgs.libiconv
-              pkgs.pkg-config
-            ]
-            ++ lib.optionals pkgs.stdenv.isLinux [
-              pkgs.glib
-              pkgs.gtk3
-              pkgs.libsoup_3
-              pkgs.webkitgtk_4_1
-              pkgs.xdotool
-            ]
-            ++ lib.optionals pkgs.stdenv.isDarwin (
-              with pkgs.darwin.apple_sdk.frameworks;
-              [
-                IOKit
-                Carbon
-                WebKit
-                Security
-                Cocoa
-              ]
-            );
-
-          # This is useful when building crates as packages
-          # Note that it does require a `Cargo.lock` which this repo does not have
-          # craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustToolchain;
-        in
-        {
-          _module.args.pkgs = import inputs.nixpkgs {
-            inherit system;
-            overlays = [
-              inputs.rust-overlay.overlays.default
-            ];
-          };
-
-          devShells.default = pkgs.mkShell {
-            name = "dioxus-dev";
-            buildInputs = rustBuildInputs;
-            nativeBuildInputs = [
-              # Add shell dependencies here
-              rustToolchain
-            ];
-            shellHook = ''
-              # For rust-analyzer 'hover' tooltips to work.
-              export RUST_SRC_PATH="${rustToolchain}/lib/rustlib/src/rust/library";
-            '';
-          };
+    {
+      nixpkgs,
+      rust-overlay,
+      flake-utils,
+      ...
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
+      let
+        overlays = [ (import rust-overlay) ];
+        pkgs = import nixpkgs {
+          inherit system overlays;
         };
-    };
+      in
+      with pkgs;
+      {
+        devShells.default = mkShell {
+          nativeBuildInputs = [
+            pkg-config
+            gobject-introspection
+            cargo
+            cargo-tauri
+            nodejs
+          ];
+
+          buildInputs =
+            [
+              at-spi2-atk
+              atkmm
+              cacert
+              cairo
+              cargo-make
+              gcc
+              gdk-pixbuf
+              glib
+              gtk3
+              harfbuzz
+              librsvg
+              libsoup_3
+              openssl
+              pango
+              pkg-config
+              trunk
+              webkitgtk_4_1
+              (rust-bin.selectLatestNightlyWith (
+                toolchain:
+                toolchain.default.override {
+                  extensions = [
+                    "rust-src"
+                    "rust-analyzer"
+                  ];
+                  targets = [ "wasm32-unknown-unknown" ];
+                }
+              ))
+            ]
+            ++ pkgs.lib.optionals pkg.stdenv.isDarwin [
+              darwin.apple_sdk.frameworks.SystemConfiguration
+            ];
+
+          shellHook = '''';
+        };
+      }
+    );
 }
