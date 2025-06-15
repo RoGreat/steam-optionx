@@ -55,17 +55,28 @@ fn userdata() -> PathBuf {
     }
 }
 
+struct Game {
+    name: String,
+    launch_options: String,
+}
+
 fn user_games(
     properties: Option<HashMap<String, String>>,
     game_names: Option<HashMap<String, String>>,
-) -> Result<HashMap<String, String>, Box<dyn Error>> {
+) -> Result<HashMap<String, Game>, Box<dyn Error>> {
     let mut result = HashMap::new();
     let appids: Vec<String> = properties.clone().unwrap().into_keys().collect();
     if let (appids, Some(game_names)) = (appids, game_names) {
         for appid in appids {
             if let Some(game_name) = game_names.get(appid.as_str()) {
-                println!("{} {}", appid, game_name);
-                result.insert(appid.to_string(), game_name.to_string());
+                let properties = properties.clone().unwrap();
+                let launch_options = properties.get(appid.as_str()).unwrap();
+                println!("{} | {} | {}", appid, game_name, launch_options);
+                let game = Game {
+                    name: game_name.to_string(),
+                    launch_options: launch_options.to_string(),
+                };
+                result.insert(appid.to_string(), game);
             }
         }
     }
@@ -77,7 +88,7 @@ struct EguiApp {
     picked_path: Option<String>,
     properties: Option<HashMap<String, String>>,
     game_names: Option<HashMap<String, String>>,
-    user_games: Option<HashMap<String, String>>,
+    user_games: Option<HashMap<String, Game>>,
 }
 
 impl eframe::App for EguiApp {
@@ -126,8 +137,10 @@ impl eframe::App for EguiApp {
                     body.row(30.0, |mut row| {
                         row.col(|ui| {
                             if let Some(user_games) = &self.user_games {
-                                for (appid, game_name) in user_games.keys().zip(user_games.values())
+                                for (appid, properties) in
+                                    user_games.keys().zip(user_games.values())
                                 {
+                                    let game_name = properties.name.clone();
                                     if !game_name.is_empty() {
                                         ui.hyperlink_to(
                                             game_name,
@@ -138,7 +151,14 @@ impl eframe::App for EguiApp {
                                 }
                             }
                         });
-                        row.col(|ui| {});
+                        row.col(|ui| {
+                            if let Some(user_games) = &self.user_games {
+                                for properties in user_games.values() {
+                                    let mut launch_options = properties.launch_options.clone();
+                                    ui.text_edit_singleline(&mut launch_options);
+                                }
+                            }
+                        });
                     });
                 });
         });
