@@ -7,7 +7,7 @@ use directories::BaseDirs;
 use eframe::egui;
 use egui_extras::{Column, TableBuilder};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::env;
 use std::error::Error;
 use std::path::PathBuf;
@@ -56,9 +56,9 @@ fn userdata() -> PathBuf {
 
 fn user_games(
     appids: Option<Vec<String>>,
-    game_names: Option<BTreeMap<String, String>>,
-) -> Result<BTreeMap<String, String>, Box<dyn Error>> {
-    let mut result = BTreeMap::new();
+    game_names: Option<HashMap<String, String>>,
+) -> Result<HashMap<String, String>, Box<dyn Error>> {
+    let mut result = HashMap::new();
     if let Some(appids) = appids {
         if let Some(game_names) = game_names.clone() {
             for appid in appids.iter() {
@@ -76,8 +76,8 @@ fn user_games(
 struct EguiApp {
     picked_path: Option<String>,
     appids: Option<Vec<String>>,
-    game_names: Option<BTreeMap<String, String>>,
-    user_games: Option<BTreeMap<String, String>>,
+    game_names: Option<HashMap<String, String>>,
+    user_games: Option<HashMap<String, String>>,
 }
 
 impl eframe::App for EguiApp {
@@ -123,13 +123,7 @@ impl eframe::App for EguiApp {
                     });
                 })
                 .body(|mut body| {
-                    let row_height = 30.0;
-                    let mut num_rows = 0;
-                    if let Some(user_games) = &self.user_games {
-                        num_rows = user_games.len();
-                    }
-                    // let num_rows = 10;
-                    body.rows(row_height, num_rows, |mut row| {
+                    body.row(30.0, |mut row| {
                         row.col(|ui| {
                             if let Some(user_games) = &self.user_games {
                                 for (appid, game_name) in user_games.keys().zip(user_games.values())
@@ -143,47 +137,8 @@ impl eframe::App for EguiApp {
                                     }
                                 }
                             }
-                            // ui.hyperlink_to(
-                            //     "Example 1".to_owned(),
-                            //     "https://store.steampowered.com/app/".to_owned(),
-                            // );
-                            // ui.hyperlink_to(
-                            //     "Example 2".to_owned(),
-                            //     "https://store.steampowered.com/app/".to_owned(),
-                            // );
-                            // ui.hyperlink_to(
-                            //     "Example 3".to_owned(),
-                            //     "https://store.steampowered.com/app/".to_owned(),
-                            // );
-                            // ui.hyperlink_to(
-                            //     "Example 4".to_owned(),
-                            //     "https://store.steampowered.com/app/".to_owned(),
-                            // );
-                            // ui.hyperlink_to(
-                            //     "Example 5".to_owned(),
-                            //     "https://store.steampowered.com/app/".to_owned(),
-                            // );
-                            // ui.hyperlink_to(
-                            //     "Example 6".to_owned(),
-                            //     "https://store.steampowered.com/app/".to_owned(),
-                            // );
-                            // ui.hyperlink_to(
-                            //     "Example 7".to_owned(),
-                            //     "https://store.steampowered.com/app/".to_owned(),
-                            // );
-                            // ui.hyperlink_to(
-                            //     "Example 8".to_owned(),
-                            //     "https://store.steampowered.com/app/".to_owned(),
-                            // );
-                            // ui.hyperlink_to(
-                            //     "Example 9".to_owned(),
-                            //     "https://store.steampowered.com/app/".to_owned(),
-                            // );
-                            // ui.hyperlink_to(
-                            //     "Example 10".to_owned(),
-                            //     "https://store.steampowered.com/app/".to_owned(),
-                            // );
                         });
+                        row.col(|ui| {});
                     });
                 });
         });
