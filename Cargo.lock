@@ -3464,7 +3464,6 @@ dependencies = [
  "egui",
  "egui_extras",
  "keyvalues-serde",
- "log",
  "reqwest",
  "rfd",
  "serde",
