@@ -15,9 +15,10 @@ use std::path::PathBuf;
 fn main() -> eframe::Result {
     let config: Config = confy::load("steam-optionx", None).unwrap();
     let picked_path = Some(config.steam_config);
-    let appids = Some(vdf::appids(picked_path.clone().unwrap()).unwrap_or(vec![]));
+    let properties =
+        Some(vdf::deserialize(picked_path.clone().unwrap()).unwrap_or(HashMap::default()));
     let game_names = Some(api::game_names().expect("Error getting steam games"));
-    let user_games = Some(user_games(appids.clone(), game_names.clone()).unwrap());
+    let user_games = Some(user_games(properties.clone(), game_names.clone()).unwrap());
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([640.0, 360.0])
@@ -30,7 +31,7 @@ fn main() -> eframe::Result {
         Box::new(|_cc| {
             Ok(Box::new(EguiApp {
                 picked_path: picked_path,
-                appids: appids,
+                properties: properties,
                 game_names: game_names,
                 user_games: user_games,
             }))
@@ -55,17 +56,16 @@ fn userdata() -> PathBuf {
 }
 
 fn user_games(
-    appids: Option<Vec<String>>,
+    properties: Option<HashMap<String, String>>,
     game_names: Option<HashMap<String, String>>,
 ) -> Result<HashMap<String, String>, Box<dyn Error>> {
     let mut result = HashMap::new();
-    if let Some(appids) = appids {
-        if let Some(game_names) = game_names.clone() {
-            for appid in appids.iter() {
-                if let Some(game_name) = game_names.get(appid) {
-                    println!("{} {}", appid, game_name);
-                    result.insert(appid.to_string(), game_name.to_string());
-                }
+    let appids: Vec<String> = properties.clone().unwrap().into_keys().collect();
+    if let (appids, Some(game_names)) = (appids, game_names) {
+        for appid in appids {
+            if let Some(game_name) = game_names.get(appid.as_str()) {
+                println!("{} {}", appid, game_name);
+                result.insert(appid.to_string(), game_name.to_string());
             }
         }
     }
@@ -75,7 +75,7 @@ fn user_games(
 #[derive(Default)]
 struct EguiApp {
     picked_path: Option<String>,
-    appids: Option<Vec<String>>,
+    properties: Option<HashMap<String, String>>,
     game_names: Option<HashMap<String, String>>,
     user_games: Option<HashMap<String, String>>,
 }
@@ -96,10 +96,10 @@ impl eframe::App for EguiApp {
                         steam_config: self.picked_path.clone().unwrap(),
                     };
                     confy::store("steam-optionx", None, config).unwrap();
-                    self.appids = Some(vdf::appids(self.picked_path.clone().unwrap()).unwrap());
-                    println!("{:?}", self.appids);
+                    self.properties =
+                        Some(vdf::deserialize(self.picked_path.clone().unwrap()).unwrap());
                     self.user_games =
-                        Some(user_games(self.appids.clone(), self.game_names.clone()).unwrap());
+                        Some(user_games(self.properties.clone(), self.game_names.clone()).unwrap());
                 }
             }
 

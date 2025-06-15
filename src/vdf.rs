@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize, forward_to_deserialize_any};
 use serde_value::Value;
+use std::any::Any;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs::{self, File};
@@ -46,13 +47,20 @@ struct Apps {
     values: HashMap<String, Value>,
 }
 
-pub fn appids(filename: String) -> Result<Vec<String>, Box<dyn Error>> {
-    let mut results = vec![];
-    let contents = fs::read_to_string(filename)?;
-    let config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
+pub fn deserialize(filename: String) -> Result<HashMap<String, String>, Box<dyn Error>> {
+    let mut results = HashMap::new();
+    let contents = fs::read_to_string(filename).unwrap();
+    let config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str()).unwrap();
     let apps = config.software.valve.steam.apps.values;
-    for appid in apps.keys() {
-        results.push(appid.clone());
+    for (appid, values) in apps.keys().zip(apps.values()) {
+        let properties = values.clone().deserialize_into::<HashMap<String, Value>>();
+        let appid = appid.clone();
+        if let Some(launch_options) = properties.unwrap_or_default().get("LaunchOptions") {
+            let launch_options = launch_options.clone().deserialize_into::<String>().unwrap();
+            results.insert(appid, launch_options);
+        } else {
+            results.insert(appid, "".to_owned());
+        }
     }
     Ok(results)
 }
