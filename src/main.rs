@@ -7,7 +7,7 @@ use directories::BaseDirs;
 use eframe::egui;
 use egui_extras::{Column, TableBuilder};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::env;
 use std::error::Error;
 use std::path::PathBuf;
@@ -16,7 +16,7 @@ fn main() -> eframe::Result {
     let config: Config = confy::load("steam-optionx", None).unwrap();
     let picked_path = Some(config.steam_config);
     let properties =
-        Some(vdf::deserialize(picked_path.clone().unwrap()).unwrap_or(HashMap::default()));
+        Some(vdf::deserialize(picked_path.clone().unwrap()).unwrap_or(BTreeMap::default()));
     let game_names = Some(api::game_names().expect("Error getting steam games"));
     let user_games = Some(user_games(properties.clone(), game_names.clone()).unwrap());
     let options = eframe::NativeOptions {
@@ -61,22 +61,22 @@ struct Game {
 }
 
 fn user_games(
-    properties: Option<HashMap<String, String>>,
-    game_names: Option<HashMap<String, String>>,
-) -> Result<HashMap<String, Game>, Box<dyn Error>> {
-    let mut result = HashMap::new();
-    let appids: Vec<String> = properties.clone().unwrap().into_keys().collect();
+    properties: Option<BTreeMap<u64, String>>,
+    game_names: Option<BTreeMap<u64, String>>,
+) -> Result<BTreeMap<u64, Game>, Box<dyn Error>> {
+    let mut result = BTreeMap::new();
+    let appids: Vec<u64> = properties.clone().unwrap().into_keys().collect();
     if let (appids, Some(game_names)) = (appids, game_names) {
         for appid in appids {
-            if let Some(game_name) = game_names.get(appid.as_str()) {
+            if let Some(game_name) = game_names.get(&appid) {
                 let properties = properties.clone().unwrap();
-                let launch_options = properties.get(appid.as_str()).unwrap();
+                let launch_options = properties.get(&appid).unwrap();
                 println!("{} | {} | {}", appid, game_name, launch_options);
                 let game = Game {
                     name: game_name.to_string(),
                     launch_options: launch_options.to_string(),
                 };
-                result.insert(appid.to_string(), game);
+                result.insert(appid, game);
             }
         }
     }
@@ -86,9 +86,9 @@ fn user_games(
 #[derive(Default)]
 struct EguiApp {
     picked_path: Option<String>,
-    properties: Option<HashMap<String, String>>,
-    game_names: Option<HashMap<String, String>>,
-    user_games: Option<HashMap<String, Game>>,
+    properties: Option<BTreeMap<u64, String>>,
+    game_names: Option<BTreeMap<u64, String>>,
+    user_games: Option<BTreeMap<u64, Game>>,
 }
 
 impl eframe::App for EguiApp {
@@ -141,20 +141,22 @@ impl eframe::App for EguiApp {
                                     user_games.keys().zip(user_games.values())
                                 {
                                     let game_name = properties.name.clone();
-                                    if !game_name.is_empty() {
-                                        ui.hyperlink_to(
-                                            game_name,
-                                            "https://store.steampowered.com/app/".to_owned()
-                                                + appid,
-                                        );
-                                    }
+                                    println!("{} | {}", appid, game_name);
+                                    ui.hyperlink_to(
+                                        game_name,
+                                        "https://store.steampowered.com/app/".to_owned()
+                                            + &appid.to_string(),
+                                    );
                                 }
                             }
                         });
                         row.col(|ui| {
                             if let Some(user_games) = &self.user_games {
-                                for properties in user_games.values() {
+                                for (appid, properties) in
+                                    user_games.keys().zip(user_games.values())
+                                {
                                     let mut launch_options = properties.launch_options.clone();
+                                    println!("{} | {}", appid, launch_options);
                                     ui.text_edit_singleline(&mut launch_options);
                                 }
                             }

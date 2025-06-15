@@ -1,21 +1,18 @@
-use serde::{Deserialize, Serialize, forward_to_deserialize_any};
+use serde::{Deserialize, Serialize};
 use serde_value::Value;
-use std::any::Any;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::error::Error;
-use std::fs::{self, File};
-use std::io::Write;
-use std::path::PathBuf;
+use std::fs;
 
-const OPTION: &str = "LaunchOptions";
-const KEY: &str = "UserLocalConfigStore";
+// const OPTION: &str = "LaunchOptions";
+// const KEY: &str = "UserLocalConfigStore";
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
 struct UserLocalConfigStore {
     software: Software,
     #[serde(flatten)]
-    other: HashMap<String, Value>,
+    other: BTreeMap<String, Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -23,7 +20,7 @@ struct UserLocalConfigStore {
 struct Software {
     valve: Valve,
     #[serde(flatten)]
-    other: HashMap<String, Value>,
+    other: BTreeMap<String, Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -31,35 +28,35 @@ struct Software {
 struct Valve {
     steam: Steam,
     #[serde(flatten)]
-    other: HashMap<String, Value>,
+    other: BTreeMap<String, Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Steam {
     apps: Apps,
     #[serde(flatten)]
-    other: HashMap<String, Value>,
+    other: BTreeMap<String, Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Apps {
     #[serde(flatten)]
-    values: HashMap<String, Value>,
+    values: BTreeMap<String, Value>,
 }
 
-pub fn deserialize(filename: String) -> Result<HashMap<String, String>, Box<dyn Error>> {
-    let mut results = HashMap::new();
+pub fn deserialize(filename: String) -> Result<BTreeMap<u64, String>, Box<dyn Error>> {
+    let mut results = BTreeMap::new();
     let contents = fs::read_to_string(filename).unwrap();
     let config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str()).unwrap();
     let apps = config.software.valve.steam.apps.values;
     for (appid, values) in apps.keys().zip(apps.values()) {
-        let properties = values.clone().deserialize_into::<HashMap<String, Value>>();
+        let properties = values.clone().deserialize_into::<BTreeMap<String, Value>>();
         let appid = appid.clone();
         if let Some(launch_options) = properties.unwrap_or_default().get("LaunchOptions") {
             let launch_options = launch_options.clone().deserialize_into::<String>().unwrap();
-            results.insert(appid, launch_options);
+            results.insert(appid.parse::<u64>().unwrap(), launch_options);
         } else {
-            results.insert(appid, "".to_owned());
+            results.insert(appid.parse::<u64>().unwrap(), "".to_owned());
         }
     }
     Ok(results)
@@ -100,7 +97,7 @@ pub fn deserialize(filename: String) -> Result<HashMap<String, String>, Box<dyn 
 //    println!("App ID: {}", appid);
 //    println!("Check: {} != {}", old_value, new_value);
 
-//    let mut map = HashMap::new();
+//    let mut map = BTreeMap::new();
 //    map.insert(OPTION.to_string(), new_value);
 //    let value = serde_value::to_value(map).unwrap();
 //    new_config
