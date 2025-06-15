@@ -8,6 +8,3 @@
 
 # Valve Data File
 *.vdf
-
-# Build
-dist
