@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, forward_to_deserialize_any};
 use serde_value::Value;
 use std::collections::HashMap;
 use std::error::Error;

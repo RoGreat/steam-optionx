@@ -5,8 +5,9 @@ mod vdf;
 
 use directories::BaseDirs;
 use eframe::egui;
+use egui_extras::{Column, TableBuilder};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::env;
 use std::error::Error;
 use std::path::PathBuf;
@@ -14,8 +15,9 @@ use std::path::PathBuf;
 fn main() -> eframe::Result {
     let config: Config = confy::load("steam-optionx", None).unwrap();
     let picked_path = Some(config.steam_config);
-    let appids = Some(vdf::appids(picked_path.clone().unwrap()).unwrap());
+    let appids = Some(vdf::appids(picked_path.clone().unwrap()).unwrap_or(vec![]));
     let game_names = Some(api::get_game_names().unwrap());
+    let user_games = Some(user_games(appids.clone(), game_names.clone()).unwrap());
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([640.0, 240.0])
@@ -30,6 +32,7 @@ fn main() -> eframe::Result {
                 picked_path: picked_path,
                 appids: appids,
                 game_names: game_names,
+                user_games: user_games,
             }))
         }),
     )
@@ -51,11 +54,30 @@ fn userdata() -> PathBuf {
     }
 }
 
+fn user_games(
+    appids: Option<Vec<String>>,
+    game_names: Option<BTreeMap<String, String>>,
+) -> Result<BTreeMap<String, String>, Box<dyn Error>> {
+    let mut result = BTreeMap::new();
+    if let Some(appids) = appids {
+        if let Some(game_names) = game_names.clone() {
+            for appid in appids.iter() {
+                if let Some(game_name) = game_names.get(appid) {
+                    println!("{} {}", appid, game_name);
+                    result.insert(appid.to_string(), game_name.to_string());
+                }
+            }
+        }
+    }
+    Ok(result)
+}
+
 #[derive(Default)]
 struct EguiApp {
     picked_path: Option<String>,
     appids: Option<Vec<String>>,
-    game_names: Option<HashMap<String, String>>,
+    game_names: Option<BTreeMap<String, String>>,
+    user_games: Option<BTreeMap<String, String>>,
 }
 
 impl eframe::App for EguiApp {
@@ -76,6 +98,8 @@ impl eframe::App for EguiApp {
                     confy::store("steam-optionx", None, config).unwrap();
                     self.appids = Some(vdf::appids(self.picked_path.clone().unwrap()).unwrap());
                     println!("{:?}", self.appids);
+                    self.user_games =
+                        Some(user_games(self.appids.clone(), self.game_names.clone()).unwrap());
                 }
             }
 
@@ -86,24 +110,82 @@ impl eframe::App for EguiApp {
                 });
             }
 
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                egui::Grid::new("games").show(ui, |ui| {
-                    if let Some(appids) = &self.appids {
-                        if let Some(game_names) = &self.game_names {
-                            for appid in appids.iter() {
-                                let game_name = game_names.get(appid);
-                                if let Some(game_name) = game_name {
-                                    ui.hyperlink_to(
-                                        game_name,
-                                        "https://store.steampowered.com/app/".to_owned() + appid,
-                                    );
-                                    ui.end_row();
+            TableBuilder::new(ui)
+                .striped(true)
+                .column(Column::auto().resizable(true).at_least(200.0))
+                .column(Column::remainder())
+                .header(20.0, |mut header| {
+                    header.col(|ui| {
+                        ui.heading("Game");
+                    });
+                    header.col(|ui| {
+                        ui.heading("Launch Option");
+                    });
+                })
+                .body(|mut body| {
+                    let row_height = 30.0;
+                    let mut num_rows = 0;
+                    if let Some(user_games) = &self.user_games {
+                        num_rows = user_games.len();
+                    }
+                    // let num_rows = 10;
+                    body.rows(row_height, num_rows, |mut row| {
+                        row.col(|ui| {
+                            if let Some(user_games) = &self.user_games {
+                                for (appid, game_name) in user_games.keys().zip(user_games.values())
+                                {
+                                    if !game_name.is_empty() {
+                                        ui.hyperlink_to(
+                                            game_name,
+                                            "https://store.steampowered.com/app/".to_owned()
+                                                + appid,
+                                        );
+                                    }
                                 }
                             }
-                        }
-                    }
+                            // ui.hyperlink_to(
+                            //     "Example 1".to_owned(),
+                            //     "https://store.steampowered.com/app/".to_owned(),
+                            // );
+                            // ui.hyperlink_to(
+                            //     "Example 2".to_owned(),
+                            //     "https://store.steampowered.com/app/".to_owned(),
+                            // );
+                            // ui.hyperlink_to(
+                            //     "Example 3".to_owned(),
+                            //     "https://store.steampowered.com/app/".to_owned(),
+                            // );
+                            // ui.hyperlink_to(
+                            //     "Example 4".to_owned(),
+                            //     "https://store.steampowered.com/app/".to_owned(),
+                            // );
+                            // ui.hyperlink_to(
+                            //     "Example 5".to_owned(),
+                            //     "https://store.steampowered.com/app/".to_owned(),
+                            // );
+                            // ui.hyperlink_to(
+                            //     "Example 6".to_owned(),
+                            //     "https://store.steampowered.com/app/".to_owned(),
+                            // );
+                            // ui.hyperlink_to(
+                            //     "Example 7".to_owned(),
+                            //     "https://store.steampowered.com/app/".to_owned(),
+                            // );
+                            // ui.hyperlink_to(
+                            //     "Example 8".to_owned(),
+                            //     "https://store.steampowered.com/app/".to_owned(),
+                            // );
+                            // ui.hyperlink_to(
+                            //     "Example 9".to_owned(),
+                            //     "https://store.steampowered.com/app/".to_owned(),
+                            // );
+                            // ui.hyperlink_to(
+                            //     "Example 10".to_owned(),
+                            //     "https://store.steampowered.com/app/".to_owned(),
+                            // );
+                        });
+                    });
                 });
-            });
         });
     }
 }

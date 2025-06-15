@@ -1,6 +1,6 @@
 use reqwest::blocking::get;
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::error::Error;
 
 #[derive(Debug, Deserialize)]
@@ -19,8 +19,8 @@ struct App {
     name: String,
 }
 
-pub fn get_game_names() -> Result<HashMap<String, String>, Box<dyn Error>> {
-    let mut result = HashMap::new();
+pub fn get_game_names() -> Result<BTreeMap<String, String>, Box<dyn Error>> {
+    let mut result = BTreeMap::new();
     let request: AppList = get("https://api.steampowered.com/ISteamApps/GetAppList/v2/")?.json()?;
     let apps = request.applist.apps;
     for app in apps {
