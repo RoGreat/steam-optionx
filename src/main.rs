@@ -16,11 +16,11 @@ fn main() -> eframe::Result {
     let config: Config = confy::load("steam-optionx", None).unwrap();
     let picked_path = Some(config.steam_config);
     let appids = Some(vdf::appids(picked_path.clone().unwrap()).unwrap_or(vec![]));
-    let game_names = Some(api::get_game_names().unwrap());
+    let game_names = Some(api::game_names().expect("Error getting steam games"));
     let user_games = Some(user_games(appids.clone(), game_names.clone()).unwrap());
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([640.0, 240.0])
+            .with_inner_size([640.0, 360.0])
             .with_drag_and_drop(true),
         ..Default::default()
     };

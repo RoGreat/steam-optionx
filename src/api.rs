@@ -19,7 +19,7 @@ struct App {
     name: String,
 }
 
-pub fn get_game_names() -> Result<HashMap<String, String>, Box<dyn Error>> {
+pub fn game_names() -> Result<HashMap<String, String>, Box<dyn Error>> {
     let mut result = HashMap::new();
     let request: AppList = get("https://api.steampowered.com/ISteamApps/GetAppList/v2/")?.json()?;
     let apps = request.applist.apps;
