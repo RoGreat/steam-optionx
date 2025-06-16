@@ -34,6 +34,7 @@ fn main() -> eframe::Result {
                 properties: properties,
                 game_names: game_names,
                 user_games: user_games,
+                all_launch_options: BTreeMap::new(),
             }))
         }),
     )
@@ -88,6 +89,7 @@ struct EguiApp {
     properties: Option<BTreeMap<u64, String>>,
     game_names: Option<BTreeMap<u64, String>>,
     user_games: Option<BTreeMap<u64, Game>>,
+    all_launch_options: BTreeMap<u64, String>,
 }
 
 impl eframe::App for EguiApp {
@@ -135,12 +137,12 @@ impl eframe::App for EguiApp {
                 .body(|mut body| {
                     body.row(0.0, |mut row| {
                         row.col(|ui| {
-                            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
                             if let Some(user_games) = &self.user_games {
                                 for (appid, properties) in
                                     user_games.keys().zip(user_games.values())
                                 {
                                     let game_name = properties.name.clone();
+                                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
                                     ui.add_sized(
                                         [ui.available_width(), 20.0],
                                         egui::Hyperlink::from_label_and_url(
@@ -153,16 +155,40 @@ impl eframe::App for EguiApp {
                             }
                         });
                         row.col(|ui| {
-                            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
                             if let Some(user_games) = &self.user_games {
-                                for (_appid, properties) in
+                                for (appid, properties) in
                                     user_games.keys().zip(user_games.values())
                                 {
-                                    let mut launch_options = properties.launch_options.clone();
-                                    ui.add_sized(
-                                        [ui.available_width(), 20.0],
-                                        egui::TextEdit::singleline(&mut launch_options),
+                                    let appid = appid.clone();
+                                    let mut current_launch_options =
+                                        properties.launch_options.clone();
+                                    match self.all_launch_options.get(&appid) {
+                                        Some(launch_options) => {
+                                            current_launch_options = launch_options.clone();
+                                            ()
+                                        }
+                                        None => {
+                                            self.all_launch_options.insert(
+                                                appid.clone(),
+                                                current_launch_options.clone(),
+                                            );
+                                            ()
+                                        }
+                                    }
+
+                                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+                                    let response = ui.add_sized(
+                                        [ui.available_width() - 20.0, 20.0],
+                                        egui::TextEdit::singleline(&mut current_launch_options),
                                     );
+                                    if response.changed() {
+                                        self.all_launch_options
+                                            .insert(appid.clone(), current_launch_options.clone());
+                                    }
+                                    if response.lost_focus()
+                                        && ui.input(|i| i.key_pressed(egui::Key::Enter))
+                                    {
+                                    }
                                 }
                             }
                         });
