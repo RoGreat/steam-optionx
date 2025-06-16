@@ -13,12 +13,12 @@ use std::error::Error;
 use std::path::PathBuf;
 
 fn main() -> eframe::Result {
-    let config: Config = confy::load("steam-optionx", None).unwrap();
+    let config: Config = confy::load("steam-optionx", None).unwrap_or_default();
     let picked_path = Some(config.steam_config);
     let properties =
-        Some(vdf::deserialize(picked_path.clone().unwrap()).unwrap_or(BTreeMap::default()));
-    let game_names = Some(api::game_names().expect("Error getting steam games"));
-    let user_games = Some(user_games(properties.clone(), game_names.clone()).unwrap());
+        vdf::deserialize(picked_path.clone().unwrap_or_default()).unwrap_or(BTreeMap::default());
+    let game_names = api::game_names().expect("Error getting Steam games");
+    let user_games = Some(user_games(properties.clone(), game_names.clone()).unwrap_or_default());
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([800.0, 450.0])
@@ -62,22 +62,20 @@ struct Game {
 }
 
 fn user_games(
-    properties: Option<BTreeMap<u64, String>>,
-    game_names: Option<BTreeMap<u64, String>>,
+    properties: BTreeMap<u64, String>,
+    game_names: BTreeMap<u64, String>,
 ) -> Result<BTreeMap<u64, Game>, Box<dyn Error>> {
     let mut result = BTreeMap::new();
-    let appids: Vec<u64> = properties.clone().unwrap().into_keys().collect();
-    if let (appids, Some(game_names)) = (appids, game_names) {
-        for appid in appids {
-            if let Some(game_name) = game_names.get(&appid) {
-                let properties = properties.clone().unwrap();
-                let launch_options = properties.get(&appid).unwrap();
-                let game = Game {
-                    name: game_name.to_string(),
-                    launch_options: launch_options.to_string(),
-                };
-                result.insert(appid, game);
-            }
+    let appids: Vec<u64> = properties.clone().into_keys().collect();
+    for appid in appids {
+        if let Some(game_name) = game_names.get(&appid) {
+            let properties = properties.clone();
+            let launch_options = properties.get(&appid).unwrap_or(&String::new()).to_string();
+            let game = Game {
+                name: game_name.clone(),
+                launch_options: launch_options,
+            };
+            result.insert(appid, game);
         }
     }
     Ok(result)
@@ -86,8 +84,8 @@ fn user_games(
 #[derive(Default)]
 struct EguiApp {
     picked_path: Option<String>,
-    properties: Option<BTreeMap<u64, String>>,
-    game_names: Option<BTreeMap<u64, String>>,
+    properties: BTreeMap<u64, String>,
+    game_names: BTreeMap<u64, String>,
     user_games: Option<BTreeMap<u64, Game>>,
     all_launch_options: BTreeMap<u64, String>,
 }
@@ -117,11 +115,12 @@ impl eframe::App for EguiApp {
                             let config = Config {
                                 steam_config: picked_path.clone(),
                             };
-                            confy::store("steam-optionx", None, config).unwrap();
-                            self.properties = Some(vdf::deserialize(picked_path.clone()).unwrap());
+                            confy::store("steam-optionx", None, config).unwrap_or_default();
+                            self.properties =
+                                vdf::deserialize(picked_path.clone()).unwrap_or_default();
                             self.user_games = Some(
                                 user_games(self.properties.clone(), self.game_names.clone())
-                                    .unwrap(),
+                                    .unwrap_or_default(),
                             );
                         }
                     }
@@ -195,7 +194,8 @@ impl eframe::App for EguiApp {
                                     if response.lost_focus()
                                         && ui.input(|i| i.key_pressed(egui::Key::Enter))
                                     {
-                                        let picked_path = self.picked_path.clone().unwrap();
+                                        let picked_path =
+                                            self.picked_path.clone().unwrap_or_default();
                                         println!("Saving '{}'...", &picked_path);
                                         _ = vdf::serialize(
                                             picked_path.clone(),
