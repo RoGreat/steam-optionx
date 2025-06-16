@@ -21,7 +21,7 @@ fn main() -> eframe::Result {
     let user_games = Some(user_games(properties.clone(), game_names.clone()).unwrap());
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([640.0, 360.0])
+            .with_inner_size([800.0, 450.0])
             .with_drag_and_drop(true),
         ..Default::default()
     };
@@ -95,46 +95,49 @@ struct EguiApp {
 impl eframe::App for EguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 ui.label("Find file:");
                 ui.monospace("Steam/userdata/XXXXXXXX/config/localconfig.vdf");
             });
 
-            if ui.button("Open file…").clicked() {
-                if let Some(path) = rfd::FileDialog::new()
-                    .add_filter("text", &["vdf"])
-                    .set_directory(userdata())
-                    .pick_file()
-                {
-                    self.picked_path = Some(path.display().to_string());
-                    let config = Config {
-                        steam_config: self.picked_path.clone().unwrap(),
-                    };
-                    confy::store("steam-optionx", None, config).unwrap();
-                    self.properties =
-                        Some(vdf::deserialize(self.picked_path.clone().unwrap()).unwrap());
-                    self.user_games =
-                        Some(user_games(self.properties.clone(), self.game_names.clone()).unwrap());
-                }
-            }
-
-            if let Some(picked_path) = &self.picked_path {
-                ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
+                if let Some(picked_path) = &self.picked_path {
                     ui.label("Picked file:");
                     ui.monospace(picked_path);
-                });
-            }
+                }
+
+                if ui.button("Open file…").clicked() {
+                    if let Some(path) = rfd::FileDialog::new()
+                        .add_filter("text", &["vdf"])
+                        .set_directory(userdata())
+                        .pick_file()
+                    {
+                        self.picked_path = Some(path.display().to_string());
+                        if let Some(picked_path) = &self.picked_path {
+                            let config = Config {
+                                steam_config: picked_path.clone(),
+                            };
+                            confy::store("steam-optionx", None, config).unwrap();
+                            self.properties = Some(vdf::deserialize(picked_path.clone()).unwrap());
+                            self.user_games = Some(
+                                user_games(self.properties.clone(), self.game_names.clone())
+                                    .unwrap(),
+                            );
+                        }
+                    }
+                }
+            });
 
             TableBuilder::new(ui)
                 .resizable(true)
-                .column(Column::auto().at_least(200.0))
+                .column(Column::auto().at_least(150.0))
                 .column(Column::remainder())
                 .header(20.0, |mut header| {
                     header.col(|ui| {
                         ui.heading("Game");
                     });
                     header.col(|ui| {
-                        ui.heading("Launch Option");
+                        ui.heading("Launch Options");
                     });
                 })
                 .body(|mut body| {

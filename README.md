@@ -4,5 +4,10 @@
 
 ```sh
 nix develop
-cargo tauri dev
+```
+
+### Run
+
+```sh
+cargo run
 ```

@@ -49,17 +49,17 @@ struct Apps {
 
 pub fn deserialize(filename: String) -> Result<BTreeMap<u64, String>, Box<dyn Error>> {
     let mut results = BTreeMap::new();
-    let contents = fs::read_to_string(filename).unwrap();
-    let config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str()).unwrap();
+    let contents = fs::read_to_string(filename)?;
+    let config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
     let apps = config.software.valve.steam.apps.values;
     for (appid, values) in apps.keys().zip(apps.values()) {
         let properties = values.clone().deserialize_into::<BTreeMap<String, Value>>();
         let appid = appid.clone();
-        if let Some(launch_options) = properties.unwrap_or_default().get("LaunchOptions") {
-            let launch_options = launch_options.clone().deserialize_into::<String>().unwrap();
-            results.insert(appid.parse::<u64>().unwrap(), launch_options);
+        if let Some(launch_options) = properties?.get("LaunchOptions") {
+            let launch_options = launch_options.clone().deserialize_into::<String>()?;
+            results.insert(appid.parse::<u64>()?, launch_options);
         } else {
-            results.insert(appid.parse::<u64>().unwrap(), "".to_owned());
+            results.insert(appid.parse::<u64>()?, "".to_owned());
         }
     }
     Ok(results)
@@ -74,7 +74,7 @@ pub fn serialize(
     for (appid, launch_options) in all_launch_options.iter() {
         let mut map = BTreeMap::new();
         map.insert(OPTION.to_string(), launch_options);
-        let value = serde_value::to_value(map).unwrap();
+        let value = serde_value::to_value(map)?;
         config
             .software
             .valve
