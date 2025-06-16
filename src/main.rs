@@ -71,7 +71,6 @@ fn user_games(
             if let Some(game_name) = game_names.get(&appid) {
                 let properties = properties.clone().unwrap();
                 let launch_options = properties.get(&appid).unwrap();
-                println!("{} | {} | {}", appid, game_name, launch_options);
                 let game = Game {
                     name: game_name.to_string(),
                     launch_options: launch_options.to_string(),
@@ -122,8 +121,8 @@ impl eframe::App for EguiApp {
             }
 
             TableBuilder::new(ui)
-                .striped(true)
-                .column(Column::auto().resizable(true).at_least(200.0))
+                .resizable(true)
+                .column(Column::auto().at_least(200.0))
                 .column(Column::remainder())
                 .header(20.0, |mut header| {
                     header.col(|ui| {
@@ -134,30 +133,36 @@ impl eframe::App for EguiApp {
                     });
                 })
                 .body(|mut body| {
-                    body.row(30.0, |mut row| {
+                    body.row(0.0, |mut row| {
                         row.col(|ui| {
+                            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
                             if let Some(user_games) = &self.user_games {
                                 for (appid, properties) in
                                     user_games.keys().zip(user_games.values())
                                 {
                                     let game_name = properties.name.clone();
-                                    println!("{} | {}", appid, game_name);
-                                    ui.hyperlink_to(
-                                        game_name,
-                                        "https://store.steampowered.com/app/".to_owned()
-                                            + &appid.to_string(),
+                                    ui.add_sized(
+                                        [ui.available_width(), 20.0],
+                                        egui::Hyperlink::from_label_and_url(
+                                            game_name,
+                                            "https://store.steampowered.com/app/".to_owned()
+                                                + &appid.to_string(),
+                                        ),
                                     );
                                 }
                             }
                         });
                         row.col(|ui| {
+                            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
                             if let Some(user_games) = &self.user_games {
-                                for (appid, properties) in
+                                for (_appid, properties) in
                                     user_games.keys().zip(user_games.values())
                                 {
                                     let mut launch_options = properties.launch_options.clone();
-                                    println!("{} | {}", appid, launch_options);
-                                    ui.text_edit_singleline(&mut launch_options);
+                                    ui.add_sized(
+                                        [ui.available_width(), 20.0],
+                                        egui::TextEdit::singleline(&mut launch_options),
+                                    );
                                 }
                             }
                         });
