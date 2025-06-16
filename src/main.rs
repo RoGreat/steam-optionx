@@ -192,15 +192,13 @@ impl eframe::App for EguiApp {
                                     if response.lost_focus()
                                         && ui.input(|i| i.key_pressed(egui::Key::Enter))
                                     {
-                                        println!(
-                                            "Saving '{}'...",
-                                            self.picked_path.clone().unwrap()
-                                        );
+                                        let picked_path = self.picked_path.clone().unwrap();
+                                        println!("Saving '{}'...", &picked_path);
                                         _ = vdf::serialize(
-                                            self.picked_path.clone().unwrap(),
+                                            picked_path.clone(),
                                             self.all_launch_options.clone(),
                                         );
-                                        println!("Saved '{}'", self.picked_path.clone().unwrap());
+                                        println!("Saved '{}'", &picked_path);
                                     }
                                 }
                             }
