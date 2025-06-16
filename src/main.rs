@@ -95,7 +95,10 @@ struct EguiApp {
 impl eframe::App for EguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.label("Find 'Steam/userdata/########/config/localconfig.vdf'");
+            ui.horizontal(|ui| {
+                ui.label("Find file:");
+                ui.monospace("Steam/userdata/XXXXXXXX/config/localconfig.vdf");
+            });
 
             if ui.button("Open file…").clicked() {
                 if let Some(path) = rfd::FileDialog::new()
@@ -142,6 +145,7 @@ impl eframe::App for EguiApp {
                                     user_games.keys().zip(user_games.values())
                                 {
                                     let game_name = properties.name.clone();
+
                                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
                                     ui.add_sized(
                                         [ui.available_width(), 20.0],
@@ -183,11 +187,20 @@ impl eframe::App for EguiApp {
                                     );
                                     if response.changed() {
                                         self.all_launch_options
-                                            .insert(appid.clone(), current_launch_options.clone());
+                                            .insert(appid, current_launch_options);
                                     }
                                     if response.lost_focus()
                                         && ui.input(|i| i.key_pressed(egui::Key::Enter))
                                     {
+                                        println!(
+                                            "Saving '{}'...",
+                                            self.picked_path.clone().unwrap()
+                                        );
+                                        _ = vdf::serialize(
+                                            self.picked_path.clone().unwrap(),
+                                            self.all_launch_options.clone(),
+                                        );
+                                        println!("Saved '{}'", self.picked_path.clone().unwrap());
                                     }
                                 }
                             }

@@ -1,11 +1,14 @@
 use serde::{Deserialize, Serialize};
 use serde_value::Value;
 use std::collections::BTreeMap;
+use std::env;
 use std::error::Error;
-use std::fs;
+use std::fs::{self, File};
+use std::io::Write;
+use std::os::unix::fs::PermissionsExt;
 
-// const OPTION: &str = "LaunchOptions";
-// const KEY: &str = "UserLocalConfigStore";
+const OPTION: &str = "LaunchOptions";
+const KEY: &str = "UserLocalConfigStore";
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
@@ -62,56 +65,31 @@ pub fn deserialize(filename: String) -> Result<BTreeMap<u64, String>, Box<dyn Er
     Ok(results)
 }
 
-// Need to list all App IDs and put it into a table
-// Later will use an API to figure out app names
-//
-// Inputs:
-// Filepath of vdf
-// Selected App ID
-// Global launch options
-// - PerGame override
-// Don't overcomplicate it!
-//fn main() -> keyvalues_serde::Result<()> {
-// Inputs
-//let option = "";
-//let global = "gamemoderun %command%";
-//let appid = "3205720";
-//let filename = "localconfig.vdf";
-
-//let results = deserialize(filename);
-
-//let old_value = results.get(appid).map_or("", |v| v);
-//let new_value;
-
-//if option.is_empty() {
-//    if global.is_empty() {
-//        new_value = old_value;
-//    } else {
-//        new_value = global;
-//    }
-//} else {
-//    new_value = option;
-//}
-
-//if *old_value != *new_value {
-//    println!("App ID: {}", appid);
-//    println!("Check: {} != {}", old_value, new_value);
-
-//    let mut map = BTreeMap::new();
-//    map.insert(OPTION.to_string(), new_value);
-//    let value = serde_value::to_value(map).unwrap();
-//    new_config
-//        .software
-//        .valve
-//        .steam
-//        .apps
-//        .values
-//        .insert(appid.to_string(), value);
-
-//    let serialized = keyvalues_serde::to_string_with_key(&new_config, KEY)?;
-//    let mut file = File::create("test.vdf")?;
-//    file.write_all(serialized.as_bytes())?;
-//}
-
-//Ok(())
-//}
+pub fn serialize(
+    filename: String,
+    all_launch_options: BTreeMap<u64, String>,
+) -> Result<(), Box<dyn Error>> {
+    let contents = fs::read_to_string(filename)?;
+    let mut config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
+    for (appid, launch_options) in all_launch_options.iter() {
+        let mut map = BTreeMap::new();
+        map.insert(OPTION.to_string(), launch_options);
+        let value = serde_value::to_value(map).unwrap();
+        config
+            .software
+            .valve
+            .steam
+            .apps
+            .values
+            .insert(appid.to_string(), value);
+        let serialized = keyvalues_serde::to_string_with_key(&config, KEY)?;
+        let mut file = File::create("test.vdf")?;
+        if env::consts::OS != "windows" {
+            let mut permissions = file.metadata()?.permissions();
+            permissions.set_mode(permissions.mode() | 0o755);
+            file.set_permissions(permissions)?;
+        }
+        file.write_all(serialized.as_bytes())?;
+    }
+    Ok(())
+}
