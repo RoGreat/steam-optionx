@@ -58,8 +58,6 @@ pub fn read(filename: String) -> Result<BTreeMap<u64, String>, Box<dyn Error>> {
         if let Some(launch_options) = properties?.get("LaunchOptions") {
             let launch_options = launch_options.clone().deserialize_into::<String>()?;
             results.insert(appid.parse::<u64>()?, launch_options);
-        } else {
-            results.insert(appid.parse::<u64>()?, "".to_owned());
         }
     }
     Ok(results)

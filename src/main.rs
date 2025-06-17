@@ -19,8 +19,8 @@ fn main() -> eframe::Result {
     let picked_path = config.steam_config;
     let properties =
         vdf::read(picked_path.clone().unwrap_or_default()).unwrap_or(BTreeMap::default());
-    let game_names = api::game_names().expect("Error getting Steam games");
-    let user_games = Some(user_games(properties.clone(), game_names.clone()).unwrap_or_default());
+    let app_names = api::app_names().expect("Error getting Steam games");
+    let apps = Some(apps(properties.clone(), app_names.clone()).unwrap_or_default());
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([800.0, 450.0])
@@ -34,8 +34,8 @@ fn main() -> eframe::Result {
             Ok(Box::new(EguiApp {
                 picked_path: picked_path,
                 properties: properties,
-                game_names: game_names,
-                user_games: user_games,
+                app_names: app_names,
+                apps: apps,
                 all_launch_options: BTreeMap::new(),
             }))
         }),
@@ -58,23 +58,23 @@ fn userdata() -> PathBuf {
     }
 }
 
-struct Game {
+struct App {
     name: String,
     launch_options: String,
 }
 
-fn user_games(
+fn apps(
     properties: BTreeMap<u64, String>,
-    game_names: BTreeMap<u64, String>,
-) -> Result<BTreeMap<u64, Game>, Box<dyn Error>> {
+    app_names: BTreeMap<u64, String>,
+) -> Result<BTreeMap<u64, App>, Box<dyn Error>> {
     let mut result = BTreeMap::new();
     let appids: Vec<u64> = properties.clone().into_keys().collect();
     for appid in appids {
-        if let Some(game_name) = game_names.get(&appid) {
+        if let Some(app_name) = app_names.get(&appid) {
             let properties = properties.clone();
             let launch_options = properties.get(&appid).unwrap_or(&String::new()).to_string();
-            let game = Game {
-                name: game_name.clone(),
+            let game = App {
+                name: app_name.clone(),
                 launch_options: launch_options,
             };
             result.insert(appid, game);
@@ -87,8 +87,8 @@ fn user_games(
 struct EguiApp {
     picked_path: Option<String>,
     properties: BTreeMap<u64, String>,
-    game_names: BTreeMap<u64, String>,
-    user_games: Option<BTreeMap<u64, Game>>,
+    app_names: BTreeMap<u64, String>,
+    apps: Option<BTreeMap<u64, App>>,
     all_launch_options: BTreeMap<u64, String>,
 }
 
@@ -114,8 +114,8 @@ impl eframe::App for EguiApp {
                             };
                             confy::store("steam-optionx", None, config).unwrap_or_default();
                             self.properties = vdf::read(picked_path.clone()).unwrap_or_default();
-                            self.user_games = Some(
-                                user_games(self.properties.clone(), self.game_names.clone())
+                            self.apps = Some(
+                                apps(self.properties.clone(), self.app_names.clone())
                                     .unwrap_or_default(),
                             );
                         }
@@ -123,7 +123,7 @@ impl eframe::App for EguiApp {
                 }
                 if ui.button("Reset").clicked() {
                     self.picked_path = None;
-                    self.user_games = None;
+                    self.apps = None;
                     _ = fs::remove_file(
                         confy::get_configuration_file_path(APP_NAME, None).unwrap(),
                     );
@@ -160,18 +160,17 @@ impl eframe::App for EguiApp {
                     .body(|mut body| {
                         body.row(0.0, |mut row| {
                             row.col(|ui| {
-                                if let Some(user_games) = &self.user_games {
-                                    for (appid, properties) in
-                                        user_games.keys().zip(user_games.values())
+                                if let Some(library) = &self.apps {
+                                    for (appid, properties) in library.keys().zip(library.values())
                                     {
-                                        let game_name = properties.name.clone();
+                                        let app_name = properties.name.clone();
 
                                         ui.style_mut().wrap_mode =
                                             Some(egui::TextWrapMode::Truncate);
                                         ui.add_sized(
                                             [ui.available_width(), 20.0],
                                             egui::Hyperlink::from_label_and_url(
-                                                game_name,
+                                                app_name,
                                                 "https://store.steampowered.com/app/".to_owned()
                                                     + &appid.to_string(),
                                             ),
@@ -180,24 +179,21 @@ impl eframe::App for EguiApp {
                                 }
                             });
                             row.col(|ui| {
-                                if let Some(user_games) = &self.user_games {
-                                    for (appid, properties) in
-                                        user_games.keys().zip(user_games.values())
+                                if let Some(library) = &self.apps {
+                                    for (appid, properties) in library.keys().zip(library.values())
                                     {
                                         let appid = appid.clone();
                                         let mut current_launch_options =
                                             properties.launch_options.clone();
                                         match self.all_launch_options.get(&appid) {
                                             Some(launch_options) => {
-                                                current_launch_options = launch_options.clone();
-                                                ()
+                                                current_launch_options = launch_options.clone()
                                             }
                                             None => {
-                                                self.all_launch_options.insert(
+                                                _ = self.all_launch_options.insert(
                                                     appid.clone(),
                                                     current_launch_options.clone(),
                                                 );
-                                                ()
                                             }
                                         }
 

@@ -19,7 +19,7 @@ struct App {
     name: String,
 }
 
-pub fn game_names() -> Result<BTreeMap<u64, String>, Box<dyn Error>> {
+pub fn app_names() -> Result<BTreeMap<u64, String>, Box<dyn Error>> {
     let mut result = BTreeMap::new();
     let request: AppList = get("https://api.steampowered.com/ISteamApps/GetAppList/v2/")?.json()?;
     let apps = request.applist.apps;
