@@ -55,9 +55,11 @@ pub fn read(filename: String) -> Result<BTreeMap<u64, String>, Box<dyn Error>> {
     for (appid, values) in apps.keys().zip(apps.values()) {
         let properties = values.clone().deserialize_into::<BTreeMap<String, Value>>();
         let appid = appid.clone();
-        if let Some(launch_options) = properties?.get("LaunchOptions") {
+        if let Some(launch_options) = properties?.get(OPTION) {
             let launch_options = launch_options.clone().deserialize_into::<String>()?;
             results.insert(appid.parse::<u64>()?, launch_options);
+        } else {
+            results.insert(appid.parse::<u64>()?, String::new());
         }
     }
     Ok(results)
@@ -71,7 +73,9 @@ pub fn write(
     let mut config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
     for (appid, launch_options) in all_launch_options.iter() {
         let mut map = BTreeMap::new();
-        map.insert(OPTION, launch_options);
+        if !launch_options.is_empty() {
+            map.insert(OPTION, launch_options);
+        }
         let value = serde_value::to_value(map)?;
         config
             .software
