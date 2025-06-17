@@ -47,7 +47,7 @@ struct Apps {
     values: BTreeMap<String, Value>,
 }
 
-pub fn deserialize(filename: String) -> Result<BTreeMap<u64, String>, Box<dyn Error>> {
+pub fn read(filename: String) -> Result<BTreeMap<u64, String>, Box<dyn Error>> {
     let mut results = BTreeMap::new();
     let contents = fs::read_to_string(filename)?;
     let config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
@@ -65,7 +65,7 @@ pub fn deserialize(filename: String) -> Result<BTreeMap<u64, String>, Box<dyn Er
     Ok(results)
 }
 
-pub fn serialize(
+pub fn write(
     filename: String,
     all_launch_options: BTreeMap<u64, String>,
 ) -> Result<(), Box<dyn Error>> {

@@ -18,7 +18,7 @@ fn main() -> eframe::Result {
     let config: Config = confy::load(APP_NAME, None).unwrap_or_default();
     let picked_path = config.steam_config;
     let properties =
-        vdf::deserialize(picked_path.clone().unwrap_or_default()).unwrap_or(BTreeMap::default());
+        vdf::read(picked_path.clone().unwrap_or_default()).unwrap_or(BTreeMap::default());
     let game_names = api::game_names().expect("Error getting Steam games");
     let user_games = Some(user_games(properties.clone(), game_names.clone()).unwrap_or_default());
     let options = eframe::NativeOptions {
@@ -113,8 +113,7 @@ impl eframe::App for EguiApp {
                                 steam_config: Some(picked_path.clone()),
                             };
                             confy::store("steam-optionx", None, config).unwrap_or_default();
-                            self.properties =
-                                vdf::deserialize(picked_path.clone()).unwrap_or_default();
+                            self.properties = vdf::read(picked_path.clone()).unwrap_or_default();
                             self.user_games = Some(
                                 user_games(self.properties.clone(), self.game_names.clone())
                                     .unwrap_or_default(),
@@ -141,7 +140,7 @@ impl eframe::App for EguiApp {
                 ui.horizontal_wrapped(|ui| {
                     if ui.button("Save").clicked() {
                         println!("Saving `{}`...", &picked_path);
-                        _ = vdf::serialize(picked_path.clone(), self.all_launch_options.clone());
+                        _ = vdf::write(picked_path.clone(), self.all_launch_options.clone());
                         println!("Saved `{}`", &picked_path);
                     }
                 });
