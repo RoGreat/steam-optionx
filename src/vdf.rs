@@ -73,7 +73,7 @@ pub fn serialize(
     let mut config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
     for (appid, launch_options) in all_launch_options.iter() {
         let mut map = BTreeMap::new();
-        map.insert(OPTION.to_string(), launch_options);
+        map.insert(OPTION, launch_options);
         let value = serde_value::to_value(map)?;
         config
             .software

@@ -8,13 +8,15 @@ use eframe::egui;
 use egui_extras::{Column, TableBuilder};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::env;
 use std::error::Error;
 use std::path::PathBuf;
+use std::{env, fs};
+
+const APP_NAME: &str = "steam-optionx";
 
 fn main() -> eframe::Result {
-    let config: Config = confy::load("steam-optionx", None).unwrap_or_default();
-    let picked_path = Some(config.steam_config);
+    let config: Config = confy::load(APP_NAME, None).unwrap_or_default();
+    let picked_path = config.steam_config;
     let properties =
         vdf::deserialize(picked_path.clone().unwrap_or_default()).unwrap_or(BTreeMap::default());
     let game_names = api::game_names().expect("Error getting Steam games");
@@ -42,7 +44,7 @@ fn main() -> eframe::Result {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct Config {
-    steam_config: String,
+    steam_config: Option<String>,
 }
 
 fn userdata() -> PathBuf {
@@ -99,11 +101,6 @@ impl eframe::App for EguiApp {
             });
 
             ui.horizontal_wrapped(|ui| {
-                if let Some(picked_path) = &self.picked_path {
-                    ui.label("Picked file:");
-                    ui.monospace(picked_path);
-                }
-
                 if ui.button("Open file…").clicked() {
                     if let Some(path) = rfd::FileDialog::new()
                         .add_filter("text", &["vdf"])
@@ -113,7 +110,7 @@ impl eframe::App for EguiApp {
                         self.picked_path = Some(path.display().to_string());
                         if let Some(picked_path) = &self.picked_path {
                             let config = Config {
-                                steam_config: picked_path.clone(),
+                                steam_config: Some(picked_path.clone()),
                             };
                             confy::store("steam-optionx", None, config).unwrap_or_default();
                             self.properties =
@@ -125,89 +122,102 @@ impl eframe::App for EguiApp {
                         }
                     }
                 }
+                if ui.button("Reset").clicked() {
+                    self.picked_path = None;
+                    self.user_games = None;
+                    _ = fs::remove_file(
+                        confy::get_configuration_file_path(APP_NAME, None).unwrap(),
+                    );
+                }
+                if let Some(picked_path) = &self.picked_path {
+                    ui.label("Picked file:");
+                    ui.monospace(picked_path);
+                }
             });
 
-            TableBuilder::new(ui)
-                .resizable(true)
-                .column(Column::auto().at_least(150.0))
-                .column(Column::remainder())
-                .header(20.0, |mut header| {
-                    header.col(|ui| {
-                        ui.heading("Game");
-                    });
-                    header.col(|ui| {
-                        ui.heading("Launch Options");
-                    });
-                })
-                .body(|mut body| {
-                    body.row(0.0, |mut row| {
-                        row.col(|ui| {
-                            if let Some(user_games) = &self.user_games {
-                                for (appid, properties) in
-                                    user_games.keys().zip(user_games.values())
-                                {
-                                    let game_name = properties.name.clone();
+            if let Some(picked_path) = &self.picked_path {
+                ui.separator();
 
-                                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-                                    ui.add_sized(
-                                        [ui.available_width(), 20.0],
-                                        egui::Hyperlink::from_label_and_url(
-                                            game_name,
-                                            "https://store.steampowered.com/app/".to_owned()
-                                                + &appid.to_string(),
-                                        ),
-                                    );
-                                }
-                            }
-                        });
-                        row.col(|ui| {
-                            if let Some(user_games) = &self.user_games {
-                                for (appid, properties) in
-                                    user_games.keys().zip(user_games.values())
-                                {
-                                    let appid = appid.clone();
-                                    let mut current_launch_options =
-                                        properties.launch_options.clone();
-                                    match self.all_launch_options.get(&appid) {
-                                        Some(launch_options) => {
-                                            current_launch_options = launch_options.clone();
-                                            ()
-                                        }
-                                        None => {
-                                            self.all_launch_options.insert(
-                                                appid.clone(),
-                                                current_launch_options.clone(),
-                                            );
-                                            ()
-                                        }
-                                    }
-
-                                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-                                    let response = ui.add_sized(
-                                        [ui.available_width() - 20.0, 20.0],
-                                        egui::TextEdit::singleline(&mut current_launch_options),
-                                    );
-                                    if response.changed() {
-                                        self.all_launch_options
-                                            .insert(appid, current_launch_options);
-                                    }
-                                    if response.lost_focus()
-                                        && ui.input(|i| i.key_pressed(egui::Key::Enter))
-                                    {
-                                        let picked_path =
-                                            self.picked_path.clone().unwrap_or_default();
-                                        println!("Saving '{}'...", &picked_path);
-                                        _ = vdf::serialize(
-                                            picked_path.clone(),
-                                            self.all_launch_options.clone(),
-                                        );
-                                        println!("Saved '{}'", &picked_path);
-                                    }
-                                }
-                            }
-                        });
-                    });
+                ui.horizontal_wrapped(|ui| {
+                    if ui.button("Save").clicked() {
+                        println!("Saving `{}`...", &picked_path);
+                        _ = vdf::serialize(picked_path.clone(), self.all_launch_options.clone());
+                        println!("Saved `{}`", &picked_path);
+                    }
                 });
+
+                TableBuilder::new(ui)
+                    .resizable(true)
+                    .column(Column::auto().at_least(150.0))
+                    .column(Column::remainder())
+                    .header(20.0, |mut header| {
+                        header.col(|ui| {
+                            ui.heading("Game");
+                        });
+                        header.col(|ui| {
+                            ui.heading("Launch Options");
+                        });
+                    })
+                    .body(|mut body| {
+                        body.row(0.0, |mut row| {
+                            row.col(|ui| {
+                                if let Some(user_games) = &self.user_games {
+                                    for (appid, properties) in
+                                        user_games.keys().zip(user_games.values())
+                                    {
+                                        let game_name = properties.name.clone();
+
+                                        ui.style_mut().wrap_mode =
+                                            Some(egui::TextWrapMode::Truncate);
+                                        ui.add_sized(
+                                            [ui.available_width(), 20.0],
+                                            egui::Hyperlink::from_label_and_url(
+                                                game_name,
+                                                "https://store.steampowered.com/app/".to_owned()
+                                                    + &appid.to_string(),
+                                            ),
+                                        );
+                                    }
+                                }
+                            });
+                            row.col(|ui| {
+                                if let Some(user_games) = &self.user_games {
+                                    for (appid, properties) in
+                                        user_games.keys().zip(user_games.values())
+                                    {
+                                        let appid = appid.clone();
+                                        let mut current_launch_options =
+                                            properties.launch_options.clone();
+                                        match self.all_launch_options.get(&appid) {
+                                            Some(launch_options) => {
+                                                current_launch_options = launch_options.clone();
+                                                ()
+                                            }
+                                            None => {
+                                                self.all_launch_options.insert(
+                                                    appid.clone(),
+                                                    current_launch_options.clone(),
+                                                );
+                                                ()
+                                            }
+                                        }
+
+                                        ui.style_mut().wrap_mode =
+                                            Some(egui::TextWrapMode::Truncate);
+                                        let response = ui.add_sized(
+                                            [ui.available_width() - 20.0, 20.0],
+                                            egui::TextEdit::singleline(&mut current_launch_options),
+                                        );
+                                        if response.changed() {
+                                            self.all_launch_options
+                                                .insert(appid, current_launch_options);
+                                        }
+                                    }
+                                }
+                            });
+                        });
+                    });
+            }
         });
     }
 }
