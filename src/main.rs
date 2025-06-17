@@ -160,9 +160,8 @@ impl eframe::App for EguiApp {
                     .body(|mut body| {
                         body.row(0.0, |mut row| {
                             row.col(|ui| {
-                                if let Some(library) = &self.apps {
-                                    for (appid, properties) in library.keys().zip(library.values())
-                                    {
+                                if let Some(apps) = &self.apps {
+                                    for (appid, properties) in apps.keys().zip(apps.values()) {
                                         let app_name = properties.name.clone();
 
                                         ui.style_mut().wrap_mode =
@@ -179,9 +178,8 @@ impl eframe::App for EguiApp {
                                 }
                             });
                             row.col(|ui| {
-                                if let Some(library) = &self.apps {
-                                    for (appid, properties) in library.keys().zip(library.values())
-                                    {
+                                if let Some(apps) = &self.apps {
+                                    for (appid, properties) in apps.keys().zip(apps.values()) {
                                         let appid = appid.clone();
                                         let mut current_launch_options =
                                             properties.launch_options.clone();
