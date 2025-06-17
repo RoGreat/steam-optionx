@@ -73,7 +73,7 @@ pub fn write(
     let mut config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
     for (appid, launch_options) in all_launch_options.iter() {
         let mut map = BTreeMap::new();
-        if !launch_options.is_empty() {
+        if !launch_options.trim().is_empty() {
             map.insert(OPTION, launch_options);
         }
         let value = serde_value::to_value(map)?;
