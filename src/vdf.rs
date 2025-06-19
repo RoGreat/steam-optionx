@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_value::Value;
 use std::collections::BTreeMap;
-use std::env;
 use std::error::Error;
 use std::fs::{self, File};
 use std::io::Write;
@@ -86,7 +85,7 @@ pub fn write(
             .insert(appid.to_string(), value);
         let serialized = keyvalues_serde::to_string_with_key(&config, KEY)?;
         let mut file = File::create(filename)?;
-        if env::consts::OS != "windows" {
+        if cfg!(unix) {
             let mut permissions = file.metadata()?.permissions();
             permissions.set_mode(permissions.mode() | 0o755);
             file.set_permissions(permissions)?;
