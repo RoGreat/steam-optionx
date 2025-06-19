@@ -17,45 +17,40 @@ const APP_NAME: &str = "steam-optionx";
 fn main() -> eframe::Result {
     let config: Config = confy::load(APP_NAME, None).unwrap_or_default();
     let picked_path = config.steam_config;
-    let mut properties = BTreeMap::default();
-    if let Some(picked_path) = &picked_path {
-        backup(picked_path.clone(), ".orig");
-        properties = vdf::read(picked_path.clone()).unwrap_or_default();
-    }
     let app_names = api::app_names().expect("Error getting Steam apps");
-    let apps = Some(apps(properties.clone(), app_names.clone()).unwrap_or_default());
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_inner_size([800.0, 450.0])
-            .with_drag_and_drop(true),
-        ..Default::default()
-    };
+    let mut properties = BTreeMap::default();
+    let mut apps = None;
+    if let Some(path) = &picked_path {
+        backup(path, ".orig");
+        properties = vdf::read(path).unwrap_or_default();
+        apps = Some(get_apps(&properties, &app_names).unwrap_or_default());
+    }
+
+    let native_options = eframe::NativeOptions::default();
     eframe::run_native(
         "Steam OptionX",
-        options,
+        native_options,
         Box::new(|_cc| {
             Ok(Box::new(EguiApp {
                 picked_path: picked_path,
                 properties: properties,
                 app_names: app_names,
                 apps: apps,
-                all_launch_options: BTreeMap::new(),
-                default_launch_options: String::new(),
+                ..Default::default()
             }))
         }),
     )
 }
 
-fn backup(picked_path: String, ext: &str) {
-    let picked_path = picked_path.clone();
+fn backup(picked_path: &String, ext: &str) {
     let backup = PathBuf::from(picked_path.clone() + ext);
     match ext {
         ".orig" => {
             if fs::exists(&backup).is_err() {
-                _ = fs::copy(PathBuf::from(&picked_path), backup)
+                _ = fs::copy(PathBuf::from(picked_path), backup)
             }
         }
-        ".bak" => _ = fs::copy(PathBuf::from(&picked_path), backup),
+        ".bak" => _ = fs::copy(PathBuf::from(picked_path), backup),
         _ => panic!(),
     }
 }
@@ -81,9 +76,9 @@ struct App {
     launch_options: String,
 }
 
-fn apps(
-    properties: BTreeMap<u64, String>,
-    app_names: BTreeMap<u64, String>,
+fn get_apps(
+    properties: &BTreeMap<u64, String>,
+    app_names: &BTreeMap<u64, String>,
 ) -> Result<BTreeMap<u64, App>, Box<dyn Error>> {
     let mut result = BTreeMap::new();
     let appids: Vec<u64> = properties.clone().into_keys().collect();
@@ -132,12 +127,11 @@ impl eframe::App for EguiApp {
                                 steam_config: Some(picked_path.clone()),
                             };
                             confy::store(APP_NAME, None, config).unwrap_or_default();
-                            self.properties = vdf::read(picked_path.clone()).unwrap_or_default();
+                            self.properties = vdf::read(picked_path).unwrap_or_default();
                             self.apps = Some(
-                                apps(self.properties.clone(), self.app_names.clone())
-                                    .unwrap_or_default(),
+                                get_apps(&self.properties, &self.app_names).unwrap_or_default(),
                             );
-                            backup(picked_path.clone(), ".orig");
+                            backup(picked_path, ".orig");
                         }
                     }
                 }
@@ -147,12 +141,12 @@ impl eframe::App for EguiApp {
                 }
             });
 
-            if let Some(picked_path) = &self.picked_path.clone() {
+            if let Some(picked_path) = &self.picked_path {
                 ui.separator();
 
                 ui.horizontal_wrapped(|ui| {
                     if ui.button("Save").clicked() {
-                        println!("Saving `{}`...", &picked_path);
+                        println!("Saving `{}`...", picked_path);
                         if !self.default_launch_options.trim().is_empty() {
                             for launch_options in self.all_launch_options.values_mut() {
                                 if launch_options.is_empty() {
@@ -161,9 +155,9 @@ impl eframe::App for EguiApp {
                             }
                             self.default_launch_options.clear();
                         }
-                        backup(picked_path.clone(), ".bak");
+                        backup(picked_path, ".bak");
                         _ = vdf::write(picked_path.clone(), self.all_launch_options.clone());
-                        println!("Saved `{}`", &picked_path);
+                        println!("Saved `{}`", picked_path);
                     }
                     if ui.button("Clear").clicked() {
                         for launch_options in self.all_launch_options.values_mut() {
@@ -173,11 +167,10 @@ impl eframe::App for EguiApp {
                     if ui.button("Restore").clicked() {
                         if let Some(apps) = &self.apps {
                             for (appid, properties) in apps.keys().zip(apps.values()) {
-                                let appid = appid.clone();
-                                let current_launch_options = properties.launch_options.clone();
+                                let current_launch_options = &properties.launch_options;
                                 _ = self
                                     .all_launch_options
-                                    .insert(appid.clone(), current_launch_options.clone());
+                                    .insert(*appid, current_launch_options.clone());
                             }
                         }
                     }
@@ -205,7 +198,7 @@ impl eframe::App for EguiApp {
                             row.col(|ui| {
                                 if let Some(apps) = &self.apps {
                                     for (appid, properties) in apps.keys().zip(apps.values()) {
-                                        let app_name = properties.name.clone();
+                                        let app_name = &properties.name;
 
                                         ui.style_mut().wrap_mode =
                                             Some(egui::TextWrapMode::Truncate);
@@ -223,7 +216,6 @@ impl eframe::App for EguiApp {
                             row.col(|ui| {
                                 if let Some(apps) = &self.apps {
                                     for (appid, properties) in apps.keys().zip(apps.values()) {
-                                        let appid = appid.clone();
                                         let mut current_launch_options =
                                             properties.launch_options.clone();
                                         match self.all_launch_options.get(&appid) {
@@ -231,10 +223,9 @@ impl eframe::App for EguiApp {
                                                 current_launch_options = launch_options.clone()
                                             }
                                             None => {
-                                                _ = self.all_launch_options.insert(
-                                                    appid.clone(),
-                                                    current_launch_options.clone(),
-                                                );
+                                                _ = self
+                                                    .all_launch_options
+                                                    .insert(*appid, current_launch_options.clone());
                                             }
                                         }
 
@@ -246,7 +237,7 @@ impl eframe::App for EguiApp {
                                         );
                                         if response.changed() {
                                             self.all_launch_options
-                                                .insert(appid, current_launch_options);
+                                                .insert(*appid, current_launch_options);
                                         }
                                     }
                                 }

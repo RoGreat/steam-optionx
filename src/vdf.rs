@@ -47,7 +47,7 @@ struct Apps {
     values: BTreeMap<String, Value>,
 }
 
-pub fn read(filename: String) -> Result<BTreeMap<u64, String>, Box<dyn Error>> {
+pub fn read(filename: &String) -> Result<BTreeMap<u64, String>, Box<dyn Error>> {
     let mut results = BTreeMap::new();
     let contents = fs::read_to_string(filename)?;
     let config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
