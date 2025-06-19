@@ -69,7 +69,7 @@ pub fn write(
     filename: String,
     all_launch_options: BTreeMap<u64, String>,
 ) -> Result<(), Box<dyn Error>> {
-    let contents = fs::read_to_string(filename)?;
+    let contents = fs::read_to_string(&filename)?;
     let mut config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
     for (appid, launch_options) in all_launch_options.iter() {
         let mut map = BTreeMap::new();
@@ -85,7 +85,7 @@ pub fn write(
             .values
             .insert(appid.to_string(), value);
         let serialized = keyvalues_serde::to_string_with_key(&config, KEY)?;
-        let mut file = File::create("test.vdf")?;
+        let mut file = File::create(&filename)?;
         if env::consts::OS != "windows" {
             let mut permissions = file.metadata()?.permissions();
             permissions.set_mode(permissions.mode() | 0o755);

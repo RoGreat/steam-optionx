@@ -19,10 +19,7 @@ fn main() -> eframe::Result {
     let picked_path = config.steam_config;
     let mut properties = BTreeMap::default();
     if let Some(picked_path) = &picked_path {
-        let backup = PathBuf::from(picked_path.clone() + ".orig");
-        if fs::exists(&backup).is_err() {
-            _ = fs::copy(PathBuf::from(picked_path.clone()), backup);
-        }
+        backup(picked_path.clone(), ".orig");
         properties = vdf::read(picked_path.clone()).unwrap_or_default();
     }
     let app_names = api::app_names().expect("Error getting Steam apps");
@@ -47,6 +44,19 @@ fn main() -> eframe::Result {
             }))
         }),
     )
+}
+
+fn backup(picked_path: String, ext: &str) {
+    let backup = PathBuf::from(picked_path.clone() + ext);
+    match ext {
+        ".orig" => {
+            if fs::exists(&backup).is_err() {
+                _ = fs::copy(PathBuf::from(picked_path), backup)
+            }
+        }
+        ".bak" => _ = fs::copy(PathBuf::from(picked_path), backup),
+        _ => panic!(),
+    }
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -126,10 +136,7 @@ impl eframe::App for EguiApp {
                                 apps(self.properties.clone(), self.app_names.clone())
                                     .unwrap_or_default(),
                             );
-                            let backup = PathBuf::from(picked_path.clone() + ".orig");
-                            if fs::exists(&backup).is_err() {
-                                _ = fs::copy(PathBuf::from(picked_path), backup);
-                            }
+                            backup(picked_path.clone(), ".orig");
                         }
                     }
                 }
@@ -160,6 +167,7 @@ impl eframe::App for EguiApp {
                             }
                             self.default_launch_options.clear();
                         }
+                        backup(picked_path.clone(), ".bak");
                         _ = vdf::write(picked_path.clone(), self.all_launch_options.clone());
                         println!("Saved `{}`", &picked_path);
                     }
