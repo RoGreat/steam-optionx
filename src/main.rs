@@ -17,9 +17,15 @@ const APP_NAME: &str = "steam-optionx";
 fn main() -> eframe::Result {
     let config: Config = confy::load(APP_NAME, None).unwrap_or_default();
     let picked_path = config.steam_config;
-    let properties =
-        vdf::read(picked_path.clone().unwrap_or_default()).unwrap_or(BTreeMap::default());
-    let app_names = api::app_names().expect("Error getting Steam games");
+    let mut properties = BTreeMap::default();
+    if let Some(picked_path) = &picked_path {
+        let backup = PathBuf::from(picked_path.clone() + ".orig");
+        if fs::exists(&backup).is_err() {
+            _ = fs::copy(PathBuf::from(picked_path.clone()), backup);
+        }
+        properties = vdf::read(picked_path.clone()).unwrap_or_default();
+    }
+    let app_names = api::app_names().expect("Error getting Steam apps");
     let apps = Some(apps(properties.clone(), app_names.clone()).unwrap_or_default());
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
@@ -37,6 +43,7 @@ fn main() -> eframe::Result {
                 app_names: app_names,
                 apps: apps,
                 all_launch_options: BTreeMap::new(),
+                default_launch_options: String::new(),
             }))
         }),
     )
@@ -90,6 +97,7 @@ struct EguiApp {
     app_names: BTreeMap<u64, String>,
     apps: Option<BTreeMap<u64, App>>,
     all_launch_options: BTreeMap<u64, String>,
+    default_launch_options: String,
 }
 
 impl eframe::App for EguiApp {
@@ -112,12 +120,16 @@ impl eframe::App for EguiApp {
                             let config = Config {
                                 steam_config: Some(picked_path.clone()),
                             };
-                            confy::store("steam-optionx", None, config).unwrap_or_default();
+                            confy::store(APP_NAME, None, config).unwrap_or_default();
                             self.properties = vdf::read(picked_path.clone()).unwrap_or_default();
                             self.apps = Some(
                                 apps(self.properties.clone(), self.app_names.clone())
                                     .unwrap_or_default(),
                             );
+                            let backup = PathBuf::from(picked_path.clone() + ".orig");
+                            if fs::exists(&backup).is_err() {
+                                _ = fs::copy(PathBuf::from(picked_path), backup);
+                            }
                         }
                     }
                 }
@@ -134,15 +146,34 @@ impl eframe::App for EguiApp {
                 }
             });
 
-            if let Some(picked_path) = &self.picked_path {
+            if let Some(picked_path) = &self.picked_path.clone() {
                 ui.separator();
 
                 ui.horizontal_wrapped(|ui| {
                     if ui.button("Save").clicked() {
                         println!("Saving `{}`...", &picked_path);
+                        if !self.default_launch_options.trim().is_empty() {
+                            for launch_options in self.all_launch_options.values_mut() {
+                                if launch_options.is_empty() {
+                                    *launch_options = self.default_launch_options.clone();
+                                }
+                            }
+                            self.default_launch_options.clear();
+                        }
                         _ = vdf::write(picked_path.clone(), self.all_launch_options.clone());
                         println!("Saved `{}`", &picked_path);
                     }
+                    if ui.button("Clear").clicked() {
+                        for launch_options in self.all_launch_options.values_mut() {
+                            launch_options.clear();
+                        }
+                        println!("Cleared `{}`", &picked_path);
+                    }
+                    ui.label("Set default launch options:");
+                    ui.add_sized(
+                        ui.available_size_before_wrap(),
+                        egui::TextEdit::singleline(&mut self.default_launch_options),
+                    );
                 });
 
                 TableBuilder::new(ui)
