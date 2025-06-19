@@ -169,7 +169,6 @@ impl eframe::App for EguiApp {
                         for launch_options in self.all_launch_options.values_mut() {
                             launch_options.clear();
                         }
-                        println!("Cleared `{}`", &picked_path);
                     }
                     if ui.button("Restore").clicked() {
                         if let Some(apps) = &self.apps {
