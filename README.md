@@ -4,7 +4,7 @@
 
 An egui application to modify app launch options in Steam's config file.
 
-This is an alpha build.
+This is an alpha build. Tested on linux. Should work on all platforms.
 
 ![Alpha](assets/steam-optionx-alpha.png)
 
