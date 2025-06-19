@@ -47,14 +47,15 @@ fn main() -> eframe::Result {
 }
 
 fn backup(picked_path: String, ext: &str) {
+    let picked_path = picked_path.clone();
     let backup = PathBuf::from(picked_path.clone() + ext);
     match ext {
         ".orig" => {
             if fs::exists(&backup).is_err() {
-                _ = fs::copy(PathBuf::from(picked_path), backup)
+                _ = fs::copy(PathBuf::from(&picked_path), backup)
             }
         }
-        ".bak" => _ = fs::copy(PathBuf::from(picked_path), backup),
+        ".bak" => _ = fs::copy(PathBuf::from(&picked_path), backup),
         _ => panic!(),
     }
 }
@@ -140,13 +141,6 @@ impl eframe::App for EguiApp {
                         }
                     }
                 }
-                if ui.button("Reset").clicked() {
-                    self.picked_path = None;
-                    self.apps = None;
-                    _ = fs::remove_file(
-                        confy::get_configuration_file_path(APP_NAME, None).unwrap(),
-                    );
-                }
                 if let Some(picked_path) = &self.picked_path {
                     ui.label("Picked file:");
                     ui.monospace(picked_path);
@@ -177,6 +171,17 @@ impl eframe::App for EguiApp {
                         }
                         println!("Cleared `{}`", &picked_path);
                     }
+                    if ui.button("Restore").clicked() {
+                        if let Some(apps) = &self.apps {
+                            for (appid, properties) in apps.keys().zip(apps.values()) {
+                                let appid = appid.clone();
+                                let current_launch_options = properties.launch_options.clone();
+                                _ = self
+                                    .all_launch_options
+                                    .insert(appid.clone(), current_launch_options.clone());
+                            }
+                        }
+                    }
                     ui.label("Set default launch options:");
                     ui.add_sized(
                         ui.available_size_before_wrap(),
@@ -190,7 +195,7 @@ impl eframe::App for EguiApp {
                     .column(Column::remainder())
                     .header(20.0, |mut header| {
                         header.col(|ui| {
-                            ui.heading("Game");
+                            ui.heading("Apps");
                         });
                         header.col(|ui| {
                             ui.heading("Launch Options");
