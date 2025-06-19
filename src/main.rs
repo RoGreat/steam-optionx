@@ -84,7 +84,6 @@ fn get_apps(
     let appids: Vec<u64> = properties.clone().into_keys().collect();
     for appid in appids {
         if let Some(app_name) = app_names.get(&appid) {
-            let properties = properties.clone();
             let launch_options = properties.get(&appid).unwrap_or(&String::new()).to_string();
             let game = App {
                 name: app_name.clone(),
@@ -213,9 +212,7 @@ impl eframe::App for EguiApp {
                                             || properties
                                                 .name
                                                 .to_lowercase()
-                                                .trim()
-                                                .to_lowercase()
-                                                .contains(&self.filter_apps)
+                                                .contains(&self.filter_apps.trim().to_lowercase())
                                         {
                                             ui.style_mut().wrap_mode =
                                                 Some(egui::TextWrapMode::Truncate);
@@ -252,9 +249,7 @@ impl eframe::App for EguiApp {
                                             || properties
                                                 .name
                                                 .to_lowercase()
-                                                .trim()
-                                                .to_lowercase()
-                                                .contains(&self.filter_apps)
+                                                .contains(&self.filter_apps.trim().to_lowercase())
                                         {
                                             ui.style_mut().wrap_mode =
                                                 Some(egui::TextWrapMode::Truncate);
