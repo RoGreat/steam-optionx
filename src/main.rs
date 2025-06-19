@@ -33,8 +33,8 @@ fn main() -> eframe::Result {
         Box::new(|_cc| {
             Ok(Box::new(EguiApp {
                 picked_path: picked_path,
-                properties: properties,
-                app_names: app_names,
+                _properties: properties,
+                _app_names: app_names,
                 apps: apps,
                 ..Default::default()
             }))
@@ -99,8 +99,8 @@ fn get_apps(
 #[derive(Default)]
 struct EguiApp {
     picked_path: Option<String>,
-    properties: BTreeMap<u64, String>,
-    app_names: BTreeMap<u64, String>,
+    _properties: BTreeMap<u64, String>,
+    _app_names: BTreeMap<u64, String>,
     apps: Option<BTreeMap<u64, App>>,
     all_launch_options: BTreeMap<u64, String>,
     default_launch_options: String,
@@ -128,9 +128,9 @@ impl eframe::App for EguiApp {
                                 steam_config: Some(picked_path.clone()),
                             };
                             confy::store(APP_NAME, None, config).unwrap_or_default();
-                            self.properties = vdf::read(picked_path).unwrap_or_default();
+                            self._properties = vdf::read(picked_path).unwrap_or_default();
                             self.apps = Some(
-                                get_apps(&self.properties, &self.app_names).unwrap_or_default(),
+                                get_apps(&self._properties, &self._app_names).unwrap_or_default(),
                             );
                             backup(picked_path, ".orig");
                         }
