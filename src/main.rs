@@ -9,20 +9,39 @@ use egui_extras::{Column, TableBuilder};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::error::Error;
+use std::fs;
 use std::path::PathBuf;
-use std::{env, fs};
 
-const APP_NAME: &str = "steam-optionx";
+const CONFIG_NAME: &str = "steam-optionx";
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+struct Config {
+    steam_config: Option<String>,
+}
+
+struct App {
+    name: String,
+    launch_options: String,
+}
+
+#[derive(Default)]
+struct EguiApp {
+    picked_path: Option<String>,
+    app_names: BTreeMap<u64, String>,
+    apps: Option<BTreeMap<u64, App>>,
+    all_launch_options: BTreeMap<u64, String>,
+    default_launch_options: String,
+    filter_apps: String,
+}
 
 fn main() -> eframe::Result {
-    let config: Config = confy::load(APP_NAME, None).unwrap_or_default();
+    let config: Config = confy::load(CONFIG_NAME, None).unwrap_or_default();
     let picked_path = config.steam_config;
     let app_names = api::app_names().expect("Error getting Steam apps");
-    let mut properties = BTreeMap::default();
     let mut apps = None;
     if let Some(path) = &picked_path {
-        backup(path, ".orig");
-        properties = vdf::read(path).unwrap_or_default();
+        backup_file(path, ".orig");
+        let properties = vdf::read(path).unwrap_or(BTreeMap::default());
         apps = Some(get_apps(&properties, &app_names).unwrap_or_default());
     }
 
@@ -33,8 +52,7 @@ fn main() -> eframe::Result {
         Box::new(|_cc| {
             Ok(Box::new(EguiApp {
                 picked_path: picked_path,
-                _properties: properties,
-                _app_names: app_names,
+                app_names: app_names,
                 apps: apps,
                 ..Default::default()
             }))
@@ -42,38 +60,29 @@ fn main() -> eframe::Result {
     )
 }
 
-fn backup(picked_path: &String, ext: &str) {
-    let backup = PathBuf::from(picked_path.clone() + ext);
+fn backup_file(picked_path: &String, ext: &str) {
+    let backup_path = PathBuf::from(picked_path.clone() + ext);
     match ext {
         ".orig" => {
-            if fs::exists(&backup).is_err() {
-                _ = fs::copy(PathBuf::from(picked_path), backup)
+            if fs::exists(&backup_path).is_err() {
+                _ = fs::copy(PathBuf::from(picked_path), backup_path)
             }
         }
-        ".bak" => _ = fs::copy(PathBuf::from(picked_path), backup),
+        ".bak" => _ = fs::copy(PathBuf::from(picked_path), backup_path),
         _ => panic!(),
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
-struct Config {
-    steam_config: Option<String>,
-}
-
-fn userdata() -> PathBuf {
-    match env::consts::OS {
-        "windows" => PathBuf::from(r"C:\Program Files (x86)\Steam\userdata"),
-        _ => BaseDirs::new()
+fn get_userdata_path() -> PathBuf {
+    if cfg!(windows) {
+        PathBuf::from(r"C:\Program Files (x86)\Steam\userdata")
+    } else {
+        BaseDirs::new()
             .unwrap()
             .data_dir()
             .to_path_buf()
-            .join("Steam/userdata"),
+            .join("Steam/userdata")
     }
-}
-
-struct App {
-    name: String,
-    launch_options: String,
 }
 
 fn get_apps(
@@ -95,15 +104,11 @@ fn get_apps(
     Ok(result)
 }
 
-#[derive(Default)]
-struct EguiApp {
-    picked_path: Option<String>,
-    _properties: BTreeMap<u64, String>,
-    _app_names: BTreeMap<u64, String>,
-    apps: Option<BTreeMap<u64, App>>,
-    all_launch_options: BTreeMap<u64, String>,
-    default_launch_options: String,
-    filter_apps: String,
+fn is_filtered(filter: &String, app_name: &String) -> bool {
+    filter.is_empty()
+        || app_name
+            .to_lowercase()
+            .contains(&filter.trim().to_lowercase())
 }
 
 impl eframe::App for EguiApp {
@@ -118,7 +123,7 @@ impl eframe::App for EguiApp {
                 if ui.button("Open file…").clicked() {
                     if let Some(path) = rfd::FileDialog::new()
                         .add_filter("text", &["vdf"])
-                        .set_directory(userdata())
+                        .set_directory(get_userdata_path())
                         .pick_file()
                     {
                         self.picked_path = Some(path.display().to_string());
@@ -126,12 +131,11 @@ impl eframe::App for EguiApp {
                             let config = Config {
                                 steam_config: Some(picked_path.clone()),
                             };
-                            confy::store(APP_NAME, None, config).unwrap_or_default();
-                            self._properties = vdf::read(picked_path).unwrap_or_default();
-                            self.apps = Some(
-                                get_apps(&self._properties, &self._app_names).unwrap_or_default(),
-                            );
-                            backup(picked_path, ".orig");
+                            confy::store(CONFIG_NAME, None, config).unwrap_or_default();
+                            let properties = vdf::read(picked_path).unwrap_or_default();
+                            self.apps =
+                                Some(get_apps(&properties, &self.app_names).unwrap_or_default());
+                            backup_file(picked_path, ".orig");
                         }
                     }
                 }
@@ -155,7 +159,7 @@ impl eframe::App for EguiApp {
                             }
                             self.default_launch_options.clear();
                         }
-                        backup(picked_path, ".bak");
+                        backup_file(picked_path, ".bak");
                         _ = vdf::write(picked_path, &self.all_launch_options);
                         println!("Saved `{}`", picked_path);
                     }
@@ -206,20 +210,13 @@ impl eframe::App for EguiApp {
                             row.col(|ui| {
                                 if let Some(apps) = &self.apps {
                                     for (appid, properties) in apps.keys().zip(apps.values()) {
-                                        let app_name = &properties.name;
-
-                                        if self.filter_apps.is_empty()
-                                            || properties
-                                                .name
-                                                .to_lowercase()
-                                                .contains(&self.filter_apps.trim().to_lowercase())
-                                        {
+                                        if is_filtered(&self.filter_apps, &properties.name) {
                                             ui.style_mut().wrap_mode =
                                                 Some(egui::TextWrapMode::Truncate);
                                             ui.add_sized(
                                                 [ui.available_width(), 20.0],
                                                 egui::Hyperlink::from_label_and_url(
-                                                    app_name,
+                                                    &properties.name,
                                                     "https://store.steampowered.com/app/"
                                                         .to_owned()
                                                         + &appid.to_string(),
@@ -245,12 +242,7 @@ impl eframe::App for EguiApp {
                                             }
                                         }
 
-                                        if self.filter_apps.is_empty()
-                                            || properties
-                                                .name
-                                                .to_lowercase()
-                                                .contains(&self.filter_apps.trim().to_lowercase())
-                                        {
+                                        if is_filtered(&self.filter_apps, &properties.name) {
                                             ui.style_mut().wrap_mode =
                                                 Some(egui::TextWrapMode::Truncate);
                                             let response = ui.add_sized(
