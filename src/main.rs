@@ -104,6 +104,7 @@ struct EguiApp {
     apps: Option<BTreeMap<u64, App>>,
     all_launch_options: BTreeMap<u64, String>,
     default_launch_options: String,
+    filter_apps: String,
 }
 
 impl eframe::App for EguiApp {
@@ -156,7 +157,7 @@ impl eframe::App for EguiApp {
                             self.default_launch_options.clear();
                         }
                         backup(picked_path, ".bak");
-                        _ = vdf::write(picked_path.clone(), self.all_launch_options.clone());
+                        _ = vdf::write(picked_path, &self.all_launch_options);
                         println!("Saved `{}`", picked_path);
                     }
                     if ui.button("Clear").clicked() {
@@ -181,6 +182,14 @@ impl eframe::App for EguiApp {
                     );
                 });
 
+                ui.horizontal_wrapped(|ui| {
+                    ui.label("Filter apps:");
+                    ui.add_sized(
+                        ui.available_size_before_wrap(),
+                        egui::TextEdit::singleline(&mut self.filter_apps),
+                    );
+                });
+
                 TableBuilder::new(ui)
                     .resizable(true)
                     .column(Column::auto().at_least(150.0))
@@ -200,16 +209,26 @@ impl eframe::App for EguiApp {
                                     for (appid, properties) in apps.keys().zip(apps.values()) {
                                         let app_name = &properties.name;
 
-                                        ui.style_mut().wrap_mode =
-                                            Some(egui::TextWrapMode::Truncate);
-                                        ui.add_sized(
-                                            [ui.available_width(), 20.0],
-                                            egui::Hyperlink::from_label_and_url(
-                                                app_name,
-                                                "https://store.steampowered.com/app/".to_owned()
-                                                    + &appid.to_string(),
-                                            ),
-                                        );
+                                        if self.filter_apps.is_empty()
+                                            || properties
+                                                .name
+                                                .to_lowercase()
+                                                .trim()
+                                                .to_lowercase()
+                                                .contains(&self.filter_apps)
+                                        {
+                                            ui.style_mut().wrap_mode =
+                                                Some(egui::TextWrapMode::Truncate);
+                                            ui.add_sized(
+                                                [ui.available_width(), 20.0],
+                                                egui::Hyperlink::from_label_and_url(
+                                                    app_name,
+                                                    "https://store.steampowered.com/app/"
+                                                        .to_owned()
+                                                        + &appid.to_string(),
+                                                ),
+                                            );
+                                        }
                                     }
                                 }
                             });
@@ -229,15 +248,26 @@ impl eframe::App for EguiApp {
                                             }
                                         }
 
-                                        ui.style_mut().wrap_mode =
-                                            Some(egui::TextWrapMode::Truncate);
-                                        let response = ui.add_sized(
-                                            [ui.available_width() - 20.0, 20.0],
-                                            egui::TextEdit::singleline(&mut current_launch_options),
-                                        );
-                                        if response.changed() {
-                                            self.all_launch_options
-                                                .insert(*appid, current_launch_options);
+                                        if self.filter_apps.is_empty()
+                                            || properties
+                                                .name
+                                                .to_lowercase()
+                                                .trim()
+                                                .to_lowercase()
+                                                .contains(&self.filter_apps)
+                                        {
+                                            ui.style_mut().wrap_mode =
+                                                Some(egui::TextWrapMode::Truncate);
+                                            let response = ui.add_sized(
+                                                [ui.available_width() - 20.0, 20.0],
+                                                egui::TextEdit::singleline(
+                                                    &mut current_launch_options,
+                                                ),
+                                            );
+                                            if response.changed() {
+                                                self.all_launch_options
+                                                    .insert(*appid, current_launch_options);
+                                            }
                                         }
                                     }
                                 }
