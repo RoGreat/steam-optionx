@@ -11,7 +11,6 @@ This is an alpha build. Tested on linux. Should work on all platforms.
 Some features to try and implement:
 
 - Sort apps by name instead of appid
-- Filter the table
 - List only installed apps
 - More launchers???
 
