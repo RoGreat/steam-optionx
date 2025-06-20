@@ -15,14 +15,15 @@ Some features to try and implement:
 - List only installed apps
 - More launchers???
 
-## Developing
+## Build
 
 ```sh
 nix develop
+cargo build --release
 ```
 
-## Running
+## Run
 
 ```sh
-cargo run
+./target/release/steam-optionx
 ```
