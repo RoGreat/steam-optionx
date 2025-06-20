@@ -1,4 +1,4 @@
-# steam-optionx
+# Steam OptionX
 
 ## Description
 
