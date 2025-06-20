@@ -1,6 +1,6 @@
 [package]
 name = "steam-optionx"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["RoGreat <roguegreat@gmail.com>"]
 edition = "2024"
 
