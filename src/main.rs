@@ -37,7 +37,7 @@ struct EguiApp {
 fn main() -> eframe::Result {
     let config: Config = confy::load(CONFIG_NAME, None).unwrap_or_default();
     let picked_path = config.steam_config;
-    let app_names = api::app_names().expect("Error getting Steam apps");
+    let app_names = api::app_names().expect("Error getting Steam apps from Steam API");
     let mut apps = None;
     if let Some(path) = &picked_path {
         backup_file(path, ".orig");
@@ -68,20 +68,17 @@ fn backup_file(picked_path: &String, ext: &str) {
                 _ = fs::copy(PathBuf::from(picked_path), backup_path)
             }
         }
-        ".bak" => _ = fs::copy(PathBuf::from(picked_path), backup_path),
-        _ => panic!(),
+        _ => _ = fs::copy(PathBuf::from(picked_path), backup_path),
     }
 }
 
-fn get_userdata_path() -> PathBuf {
+fn get_userdata_dir() -> PathBuf {
     if cfg!(windows) {
         PathBuf::from(r"C:\Program Files (x86)\Steam\userdata")
+    } else if let Some(home_dir) = BaseDirs::new() {
+        home_dir.data_dir().to_path_buf().join("Steam/userdata")
     } else {
-        BaseDirs::new()
-            .unwrap()
-            .data_dir()
-            .to_path_buf()
-            .join("Steam/userdata")
+        PathBuf::new()
     }
 }
 
@@ -123,7 +120,7 @@ impl eframe::App for EguiApp {
                 if ui.button("Open file…").clicked() {
                     if let Some(path) = rfd::FileDialog::new()
                         .add_filter("text", &["vdf"])
-                        .set_directory(get_userdata_path())
+                        .set_directory(get_userdata_dir())
                         .pick_file()
                     {
                         self.picked_path = Some(path.display().to_string());
@@ -185,6 +182,8 @@ impl eframe::App for EguiApp {
                     );
                 });
 
+                ui.separator();
+
                 ui.horizontal_wrapped(|ui| {
                     ui.label("Filter apps:");
                     ui.add_sized(
@@ -192,6 +191,8 @@ impl eframe::App for EguiApp {
                         egui::TextEdit::singleline(&mut self.filter_apps),
                     );
                 });
+
+                ui.separator();
 
                 TableBuilder::new(ui)
                     .resizable(true)
@@ -209,7 +210,7 @@ impl eframe::App for EguiApp {
                         body.row(0.0, |mut row| {
                             row.col(|ui| {
                                 if let Some(apps) = &self.apps {
-                                    for (appid, properties) in apps.keys().zip(apps.values()) {
+                                    for (appid, properties) in apps.iter() {
                                         if is_filtered(&self.filter_apps, &properties.name) {
                                             ui.style_mut().wrap_mode =
                                                 Some(egui::TextWrapMode::Truncate);
@@ -228,7 +229,7 @@ impl eframe::App for EguiApp {
                             });
                             row.col(|ui| {
                                 if let Some(apps) = &self.apps {
-                                    for (appid, properties) in apps.keys().zip(apps.values()) {
+                                    for (appid, properties) in apps.iter() {
                                         let mut current_launch_options =
                                             properties.launch_options.clone();
                                         match self.all_launch_options.get(&appid) {
