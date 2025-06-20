@@ -24,5 +24,5 @@ cargo build --release
 ## Run
 
 ```sh
-./target/release/steam-optionx
+cargo run --release
 ```
