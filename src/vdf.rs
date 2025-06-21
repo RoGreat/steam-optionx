@@ -90,7 +90,7 @@ pub fn write(
     Ok(())
 }
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 fn set_file_perms(_file: &mut File) -> Result<(), Box<dyn Error>> {
     use std::os::unix::fs::PermissionsExt;
 
@@ -100,5 +100,5 @@ fn set_file_perms(_file: &mut File) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-#[cfg(not(target_family = "unix"))]
+#[cfg(not(unix))]
 fn set_file_perms(_file: &mut File) {}
