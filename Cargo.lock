@@ -3461,7 +3461,6 @@ dependencies = [
  "confy",
  "directories",
  "eframe",
- "egui",
  "egui_extras",
  "keyvalues-serde",
  "reqwest",

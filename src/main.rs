@@ -145,7 +145,6 @@ impl eframe::App for EguiApp {
 
                 ui.horizontal_wrapped(|ui| {
                     if ui.button("Save").clicked() {
-                        println!("Saving `{}`...", picked_path);
                         if !self.default_launch_options.trim().is_empty() {
                             for launch_options in self.all_launch_options.values_mut() {
                                 if launch_options.is_empty() {
@@ -156,7 +155,6 @@ impl eframe::App for EguiApp {
                         }
                         backup_file(picked_path, ".bak");
                         _ = vdf::write(picked_path, &self.all_launch_options);
-                        println!("Saved `{}`", picked_path);
                     }
                     if ui.button("Clear").clicked() {
                         for launch_options in self.all_launch_options.values_mut() {
