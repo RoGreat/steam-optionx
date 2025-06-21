@@ -46,7 +46,7 @@ struct Apps {
     values: BTreeMap<String, Value>,
 }
 
-pub fn read(filename: &String) -> Result<BTreeMap<u64, String>, Box<dyn Error>> {
+pub fn read(filename: &String) -> Result<BTreeMap<u32, String>, Box<dyn Error>> {
     let mut results = BTreeMap::new();
     let contents = fs::read_to_string(filename)?;
     let config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
@@ -56,9 +56,9 @@ pub fn read(filename: &String) -> Result<BTreeMap<u64, String>, Box<dyn Error>> 
         let appid = appid.clone();
         if let Some(launch_options) = properties?.get(OPTION) {
             let launch_options = launch_options.clone().deserialize_into::<String>()?;
-            results.insert(appid.parse::<u64>()?, launch_options);
+            results.insert(appid.parse::<u32>()?, launch_options);
         } else {
-            results.insert(appid.parse::<u64>()?, String::new());
+            results.insert(appid.parse::<u32>()?, String::new());
         }
     }
     Ok(results)
@@ -66,7 +66,7 @@ pub fn read(filename: &String) -> Result<BTreeMap<u64, String>, Box<dyn Error>> 
 
 pub fn write(
     filename: &String,
-    all_launch_options: &BTreeMap<u64, String>,
+    all_launch_options: &BTreeMap<u32, String>,
 ) -> Result<(), Box<dyn Error>> {
     let contents = fs::read_to_string(filename)?;
     let mut config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
@@ -85,12 +85,16 @@ pub fn write(
             .insert(appid.to_string(), value);
         let serialized = keyvalues_serde::to_string_with_key(&config, KEY)?;
         let mut file = File::create(filename)?;
-        if cfg!(unix) {
-            let mut permissions = file.metadata()?.permissions();
-            permissions.set_mode(permissions.mode() | 0o755);
-            file.set_permissions(permissions)?;
-        }
+        _ = set_file_perms(&mut file);
         file.write_all(serialized.as_bytes())?;
     }
+    Ok(())
+}
+
+#[cfg(target_family = "unix")]
+fn set_file_perms(file: &mut File) -> Result<(), Box<dyn Error>> {
+    let mut permissions = file.metadata()?.permissions();
+    permissions.set_mode(permissions.mode() | 0o755);
+    file.set_permissions(permissions)?;
     Ok(())
 }

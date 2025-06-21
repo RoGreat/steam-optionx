@@ -26,20 +26,20 @@ struct App {
 
 #[derive(Default)]
 struct EguiApp {
-    picked_path: Option<String>,
-    app_names: BTreeMap<u64, String>,
-    apps: Option<BTreeMap<u64, App>>,
-    all_launch_options: BTreeMap<u64, String>,
+    steam_config: Option<String>,
+    app_names: BTreeMap<u32, String>,
+    apps: Option<BTreeMap<u32, App>>,
+    all_launch_options: BTreeMap<u32, String>,
     default_launch_options: String,
     filter_apps: String,
 }
 
 fn main() -> eframe::Result {
     let config: Config = confy::load(CONFIG_NAME, None).unwrap_or_default();
-    let picked_path = config.steam_config;
+    let steam_config = config.steam_config;
     let app_names = api::app_names().expect("Error getting Steam apps from Steam API");
     let mut apps = None;
-    if let Some(path) = &picked_path {
+    if let Some(path) = &steam_config {
         backup_file(path, ".orig");
         let properties = vdf::read(path).unwrap_or(BTreeMap::default());
         apps = Some(get_apps(&properties, &app_names).unwrap_or_default());
@@ -51,7 +51,7 @@ fn main() -> eframe::Result {
         native_options,
         Box::new(|_cc| {
             Ok(Box::new(EguiApp {
-                picked_path: picked_path,
+                steam_config: steam_config,
                 app_names: app_names,
                 apps: apps,
                 ..Default::default()
@@ -72,7 +72,7 @@ fn backup_file(picked_path: &String, ext: &str) {
     }
 }
 
-fn get_userdata_dir() -> PathBuf {
+fn userdata_dir() -> PathBuf {
     if cfg!(windows) {
         PathBuf::from(r"C:\Program Files (x86)\Steam\userdata")
     } else if let Some(home_dir) = BaseDirs::new() {
@@ -83,14 +83,14 @@ fn get_userdata_dir() -> PathBuf {
 }
 
 fn get_apps(
-    properties: &BTreeMap<u64, String>,
-    app_names: &BTreeMap<u64, String>,
-) -> Result<BTreeMap<u64, App>, Box<dyn Error>> {
+    properties: &BTreeMap<u32, String>,
+    app_names: &BTreeMap<u32, String>,
+) -> Result<BTreeMap<u32, App>, Box<dyn Error>> {
     let mut result = BTreeMap::new();
-    let appids: Vec<u64> = properties.clone().into_keys().collect();
+    let appids: Vec<u32> = properties.clone().into_keys().collect();
     for appid in appids {
         if let Some(app_name) = app_names.get(&appid) {
-            let launch_options = properties.get(&appid).unwrap_or(&String::new()).to_string();
+            let launch_options = properties.get(&appid).unwrap_or(&String::new()).clone();
             let game = App {
                 name: app_name.clone(),
                 launch_options: launch_options,
@@ -120,11 +120,11 @@ impl eframe::App for EguiApp {
                 if ui.button("Open file…").clicked() {
                     if let Some(path) = rfd::FileDialog::new()
                         .add_filter("text", &["vdf"])
-                        .set_directory(get_userdata_dir())
+                        .set_directory(userdata_dir())
                         .pick_file()
                     {
-                        self.picked_path = Some(path.display().to_string());
-                        if let Some(picked_path) = &self.picked_path {
+                        self.steam_config = Some(path.to_str().unwrap_or_default().to_owned());
+                        if let Some(picked_path) = &self.steam_config {
                             let config = Config {
                                 steam_config: Some(picked_path.clone()),
                             };
@@ -136,13 +136,13 @@ impl eframe::App for EguiApp {
                         }
                     }
                 }
-                if let Some(picked_path) = &self.picked_path {
+                if let Some(picked_path) = &self.steam_config {
                     ui.label("Picked file:");
                     ui.monospace(picked_path);
                 }
             });
 
-            if let Some(picked_path) = &self.picked_path {
+            if let Some(picked_path) = &self.steam_config {
                 ui.separator();
 
                 ui.horizontal_wrapped(|ui| {

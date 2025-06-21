@@ -15,11 +15,11 @@ struct Apps {
 
 #[derive(Debug, Deserialize)]
 struct App {
-    appid: u64,
+    appid: u32,
     name: String,
 }
 
-pub fn app_names() -> Result<BTreeMap<u64, String>, Box<dyn Error>> {
+pub fn app_names() -> Result<BTreeMap<u32, String>, Box<dyn Error>> {
     let mut result = BTreeMap::new();
     let request: AppList = get("https://api.steampowered.com/ISteamApps/GetAppList/v2/")?.json()?;
     let apps = request.applist.apps;
