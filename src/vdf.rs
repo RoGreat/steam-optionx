@@ -4,7 +4,6 @@ use std::collections::BTreeMap;
 use std::error::Error;
 use std::fs::{self, File};
 use std::io::Write;
-use std::os::unix::fs::PermissionsExt;
 
 const OPTION: &str = "LaunchOptions";
 const KEY: &str = "UserLocalConfigStore";
@@ -84,17 +83,22 @@ pub fn write(
             .values
             .insert(appid.to_string(), value);
         let serialized = keyvalues_serde::to_string_with_key(&config, KEY)?;
-        let mut file = File::create(filename)?;
-        _ = set_file_perms(&mut file);
-        file.write_all(serialized.as_bytes())?;
+        let mut _file = File::create(filename)?;
+        _ = set_file_perms(&mut _file);
+        _file.write_all(serialized.as_bytes())?;
     }
     Ok(())
 }
 
 #[cfg(target_family = "unix")]
-fn set_file_perms(file: &mut File) -> Result<(), Box<dyn Error>> {
-    let mut permissions = file.metadata()?.permissions();
+fn set_file_perms(_file: &mut File) -> Result<(), Box<dyn Error>> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let mut permissions = _file.metadata()?.permissions();
     permissions.set_mode(permissions.mode() | 0o755);
-    file.set_permissions(permissions)?;
+    _file.set_permissions(permissions)?;
     Ok(())
 }
+
+#[cfg(not(target_family = "unix"))]
+fn set_file_perms(_file: &mut File) {}
