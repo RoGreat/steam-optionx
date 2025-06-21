@@ -62,7 +62,7 @@ fn backup_file(picked_path: &String, ext: &str) {
     let backup_path = PathBuf::from(picked_path.clone() + ext);
     match ext {
         ".orig" => {
-            if fs::exists(&backup_path).is_err() {
+            if !backup_path.is_file() {
                 _ = fs::copy(PathBuf::from(picked_path), backup_path)
             }
         }
