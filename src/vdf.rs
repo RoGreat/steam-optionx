@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_value::Value;
 use std::collections::BTreeMap;
 use std::error::Error;
-use std::fs::{self, File};
+use std::fs::{self, OpenOptions};
 use std::io::Write;
 
 const OPTION: &str = "LaunchOptions";
@@ -82,23 +82,12 @@ pub fn write(
             .apps
             .values
             .insert(appid.to_string(), value);
-        let serialized = keyvalues_serde::to_string_with_key(&config, KEY)?;
-        let mut _file = File::create(filename)?;
-        _ = set_file_perms(&mut _file);
-        _file.write_all(serialized.as_bytes())?;
     }
+    let serialized = keyvalues_serde::to_string_with_key(&config, KEY)?;
+    let mut file = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(filename)?;
+    file.write_all(serialized.as_bytes())?;
     Ok(())
 }
-
-#[cfg(unix)]
-fn set_file_perms(_file: &mut File) -> Result<(), Box<dyn Error>> {
-    use std::os::unix::fs::PermissionsExt;
-
-    let mut permissions = _file.metadata()?.permissions();
-    permissions.set_mode(permissions.mode() | 0o755);
-    _file.set_permissions(permissions)?;
-    Ok(())
-}
-
-#[cfg(not(unix))]
-fn set_file_perms(_file: &mut File) {}
