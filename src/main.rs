@@ -15,6 +15,7 @@ const CONFIG_NAME: &str = "steam-optionx";
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct Config {
     steam_config: Option<String>,
+    default_launch_options: String,
 }
 
 struct App {
@@ -35,6 +36,7 @@ struct EguiApp {
 fn main() -> eframe::Result {
     let config: Config = confy::load(CONFIG_NAME, None).unwrap_or_default();
     let steam_config = config.steam_config;
+    let default_launch_options = config.default_launch_options;
     let app_names = api::app_names().expect("Error getting Steam apps from Steam API");
     let mut apps = None;
     if let Some(path) = &steam_config {
@@ -52,6 +54,7 @@ fn main() -> eframe::Result {
                 steam_config: steam_config,
                 app_names: app_names,
                 apps: apps,
+                default_launch_options: default_launch_options,
                 ..Default::default()
             }))
         }),
@@ -123,8 +126,10 @@ impl eframe::App for EguiApp {
                     {
                         self.steam_config = Some(path.to_str().unwrap_or_default().to_owned());
                         if let Some(picked_path) = &self.steam_config {
+                            let config: Config = confy::load(CONFIG_NAME, None).unwrap_or_default();
                             let config = Config {
                                 steam_config: Some(picked_path.clone()),
+                                default_launch_options: config.default_launch_options,
                             };
                             confy::store(CONFIG_NAME, None, config).unwrap_or_default();
                             let properties = vdf::read(picked_path).unwrap_or_default();
@@ -134,6 +139,7 @@ impl eframe::App for EguiApp {
                         }
                     }
                 }
+
                 if let Some(picked_path) = &self.steam_config {
                     ui.label("Picked file:");
                     ui.monospace(picked_path);
@@ -144,26 +150,47 @@ impl eframe::App for EguiApp {
                 ui.separator();
 
                 ui.horizontal_wrapped(|ui| {
-                    if ui.button("Save").clicked() {
+                    let response = ui.button("Save");
+                    let popup_id = ui.make_persistent_id("Save");
+                    if response.clicked() {
+                        let config: Config = confy::load(CONFIG_NAME, None).unwrap_or_default();
+                        let config = Config {
+                            steam_config: config.steam_config,
+                            default_launch_options: self.default_launch_options.clone(),
+                        };
+                        confy::store(CONFIG_NAME, None, config).unwrap_or_default();
                         if !self.default_launch_options.trim().is_empty() {
                             for launch_options in self.all_launch_options.values_mut() {
                                 if launch_options.is_empty() {
                                     *launch_options = self.default_launch_options.clone();
                                 }
                             }
-                            self.default_launch_options.clear();
                         }
                         backup_file(picked_path, ".bak");
                         _ = vdf::write(picked_path, &self.all_launch_options);
-                    }
+                        ui.memory_mut(|mem| mem.toggle_popup(popup_id));
+                    };
+                    egui::popup_above_or_below_widget(
+                        ui,
+                        popup_id,
+                        &response,
+                        egui::AboveOrBelow::Above,
+                        egui::popup::PopupCloseBehavior::CloseOnClick,
+                        |ui| {
+                            ui.set_min_width(100.0);
+                            ui.label("Configs saved");
+                        },
+                    );
+
                     if ui.button("Clear").clicked() {
                         for launch_options in self.all_launch_options.values_mut() {
                             launch_options.clear();
                         }
                     }
+
                     if ui.button("Restore").clicked() {
                         if let Some(apps) = &self.apps {
-                            for (appid, properties) in apps.keys().zip(apps.values()) {
+                            for (appid, properties) in apps.iter() {
                                 let current_launch_options = &properties.launch_options;
                                 _ = self
                                     .all_launch_options
