@@ -45,7 +45,13 @@ fn main() -> eframe::Result {
         apps = Some(get_apps(&properties, &app_names).unwrap_or_default());
     }
 
-    let native_options = eframe::NativeOptions::default();
+    let native_options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default().with_icon(
+            eframe::icon_data::from_png_bytes(&include_bytes!("../assets/icon-256.png")[..])
+                .expect("Failed to load icon"),
+        ),
+        ..Default::default()
+    };
     eframe::run_native(
         "Steam OptionX",
         native_options,
