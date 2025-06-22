@@ -168,7 +168,7 @@ impl eframe::App for EguiApp {
                         }
                         backup_file(picked_path, ".bak");
                         _ = vdf::write(picked_path, &self.all_launch_options);
-                        ui.memory_mut(|mem| mem.toggle_popup(popup_id));
+                        ui.memory_mut(|mem| mem.open_popup(popup_id));
                     };
                     egui::popup_above_or_below_widget(
                         ui,
