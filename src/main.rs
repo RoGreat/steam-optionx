@@ -23,6 +23,26 @@ struct App {
     launch_options: String,
 }
 
+#[derive(Default, PartialEq)]
+enum AppSort {
+    #[default]
+    IdAscending,
+    IdDescending,
+    NameAscending,
+    NameDescending,
+}
+
+impl AppSort {
+    fn as_str(&self) -> &'static str {
+        match self {
+            AppSort::IdAscending => "App ID Ascending",
+            AppSort::IdDescending => "App ID Descending",
+            AppSort::NameAscending => "App Name Ascending",
+            AppSort::NameDescending => "App Name Descending",
+        }
+    }
+}
+
 #[derive(Default)]
 struct EguiApp {
     steam_config: Option<String>,
@@ -31,6 +51,8 @@ struct EguiApp {
     all_launch_options: BTreeMap<u32, String>,
     default_launch_options: String,
     filter_apps: String,
+    sorted_apps: AppSort,
+    prev_sort: AppSort,
 }
 
 fn main() -> eframe::Result {
@@ -208,6 +230,33 @@ impl eframe::App for EguiApp {
                 ui.separator();
 
                 ui.horizontal_wrapped(|ui| {
+                    let mut selected: AppSort = Default::default();
+
+                    egui::ComboBox::from_id_salt("AppSort")
+                        .selected_text(format!("{}", selected.as_str()))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut selected,
+                                AppSort::IdAscending,
+                                AppSort::IdAscending.as_str(),
+                            );
+                            ui.selectable_value(
+                                &mut selected,
+                                AppSort::IdDescending,
+                                AppSort::IdDescending.as_str(),
+                            );
+                            ui.selectable_value(
+                                &mut selected,
+                                AppSort::NameAscending,
+                                AppSort::NameAscending.as_str(),
+                            );
+                            ui.selectable_value(
+                                &mut selected,
+                                AppSort::NameDescending,
+                                AppSort::NameDescending.as_str(),
+                            );
+                        });
+
                     ui.label("Filter apps:");
                     ui.add_sized(
                         ui.available_size_before_wrap(),
@@ -233,7 +282,13 @@ impl eframe::App for EguiApp {
                         body.row(0.0, |mut row| {
                             row.col(|ui| {
                                 if let Some(apps) = &self.apps {
-                                    for (appid, properties) in apps.iter() {
+                                    let sorted_apps: Vec<_> = match &self.sorted_apps {
+                                        AppSort::IdAscending => apps.into_iter().collect(),
+                                        AppSort::IdDescending => apps.into_iter().rev().collect(),
+                                        AppSort::NameDescending => apps.into_iter().collect(),
+                                        AppSort::NameAscending => apps.into_iter().collect(),
+                                    };
+                                    for (appid, properties) in sorted_apps.iter() {
                                         if is_filtered(&self.filter_apps, &properties.name) {
                                             ui.style_mut().wrap_mode =
                                                 Some(egui::TextWrapMode::Truncate);
