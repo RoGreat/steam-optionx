@@ -67,16 +67,20 @@ struct EguiApp {
 
 fn main() -> eframe::Result {
     let config: Config = confy::load(CONFIG_NAME, None).unwrap_or_default();
+
     let steam_config = config.steam_config;
-    let default_launch_options = config.default_launch_options;
-    let app_sort = config.app_sort;
     let app_names = api::app_names().expect("Error getting Steam apps from Steam API");
-    let mut apps = None;
-    if let Some(path) = &steam_config {
+    let apps = if let Some(path) = &steam_config {
         backup_file(path, ".orig");
         let properties = vdf::read(path).unwrap_or(BTreeMap::default());
-        apps = Some(get_apps(&properties, &app_names).unwrap_or_default());
-    }
+        Some(get_apps(&properties, &app_names).unwrap_or_default())
+    } else {
+        None
+    };
+
+    let default_launch_options = config.default_launch_options;
+
+    let app_sort = config.app_sort;
     let app_sort = if let Some(sort) = &app_sort {
         AppSort::from(sort.as_str())
     } else {
