@@ -16,7 +16,7 @@ const CONFIG_NAME: &str = "steam-optionx";
 struct Config {
     steam_config: Option<String>,
     default_launch_options: String,
-    // app_sort: String,
+    app_sort: Option<String>,
 }
 
 struct App {
@@ -43,15 +43,15 @@ impl AppSort {
         }
     }
 
-    // fn from(value: &str) -> Self {
-    //     match value {
-    //         "App ID Ascending" => AppSort::IdAscending,
-    //         "App ID Descending" => AppSort::IdDescending,
-    //         "App Name Ascending" => AppSort::NameAscending,
-    //         "App Name Descending" => AppSort::NameDescending,
-    //         _ => panic!("Invalid app_sort"),
-    //     }
-    // }
+    fn from(value: &str) -> Self {
+        match value {
+            "App ID Ascending" => AppSort::IdAscending,
+            "App ID Descending" => AppSort::IdDescending,
+            "App Name Ascending" => AppSort::NameAscending,
+            "App Name Descending" => AppSort::NameDescending,
+            _ => AppSort::IdAscending,
+        }
+    }
 }
 
 #[derive(Default)]
@@ -69,6 +69,7 @@ fn main() -> eframe::Result {
     let config: Config = confy::load(CONFIG_NAME, None).unwrap_or_default();
     let steam_config = config.steam_config;
     let default_launch_options = config.default_launch_options;
+    let app_sort = config.app_sort;
     let app_names = api::app_names().expect("Error getting Steam apps from Steam API");
     let mut apps = None;
     if let Some(path) = &steam_config {
@@ -76,6 +77,11 @@ fn main() -> eframe::Result {
         let properties = vdf::read(path).unwrap_or(BTreeMap::default());
         apps = Some(get_apps(&properties, &app_names).unwrap_or_default());
     }
+    let app_sort = if let Some(sort) = &app_sort {
+        AppSort::from(sort.as_str())
+    } else {
+        AppSort::default()
+    };
 
     let native_options = eframe::NativeOptions::default();
     eframe::run_native(
@@ -87,6 +93,7 @@ fn main() -> eframe::Result {
                 app_names: app_names,
                 apps: apps,
                 default_launch_options: default_launch_options,
+                app_sort: app_sort,
                 ..Default::default()
             }))
         }),
@@ -179,6 +186,7 @@ impl eframe::App for EguiApp {
                             let config = Config {
                                 steam_config: Some(picked_path.clone()),
                                 default_launch_options: config.default_launch_options,
+                                app_sort: config.app_sort,
                             };
                             confy::store(CONFIG_NAME, None, config).unwrap_or_default();
                             let properties = vdf::read(picked_path).unwrap_or_default();
@@ -206,6 +214,7 @@ impl eframe::App for EguiApp {
                         let config = Config {
                             steam_config: config.steam_config,
                             default_launch_options: self.default_launch_options.clone(),
+                            app_sort: Some(self.app_sort.as_str().to_string()),
                         };
                         confy::store(CONFIG_NAME, None, config).unwrap_or_default();
                         if !self.default_launch_options.trim().is_empty() {
