@@ -16,6 +16,7 @@ const CONFIG_NAME: &str = "steam-optionx";
 struct Config {
     steam_config: Option<String>,
     default_launch_options: String,
+    // app_sort: String,
 }
 
 struct App {
@@ -23,7 +24,7 @@ struct App {
     launch_options: String,
 }
 
-#[derive(Default, PartialEq)]
+#[derive(Default, PartialEq, Clone)]
 enum AppSort {
     #[default]
     IdAscending,
@@ -41,6 +42,16 @@ impl AppSort {
             AppSort::NameDescending => "App Name Descending",
         }
     }
+
+    // fn from(value: &str) -> Self {
+    //     match value {
+    //         "App ID Ascending" => AppSort::IdAscending,
+    //         "App ID Descending" => AppSort::IdDescending,
+    //         "App Name Ascending" => AppSort::NameAscending,
+    //         "App Name Descending" => AppSort::NameDescending,
+    //         _ => panic!("Invalid app_sort"),
+    //     }
+    // }
 }
 
 #[derive(Default)]
@@ -51,8 +62,7 @@ struct EguiApp {
     all_launch_options: BTreeMap<u32, String>,
     default_launch_options: String,
     filter_apps: String,
-    sorted_apps: AppSort,
-    prev_sort: AppSort,
+    app_sort: AppSort,
 }
 
 fn main() -> eframe::Result {
@@ -129,6 +139,23 @@ fn is_filtered(filter: &String, app_name: &String) -> bool {
         || app_name
             .to_lowercase()
             .contains(&filter.trim().to_lowercase())
+}
+
+fn sort_apps(sort: AppSort, apps: &BTreeMap<u32, App>) -> Vec<(&u32, &App)> {
+    match sort {
+        AppSort::IdAscending => apps.into_iter().collect(),
+        AppSort::IdDescending => apps.into_iter().rev().collect(),
+        AppSort::NameAscending => {
+            let mut v = apps.into_iter().collect::<Vec<(&u32, &App)>>();
+            v.sort_by(|a, b| a.1.name.to_lowercase().cmp(&b.1.name.to_lowercase()));
+            v
+        }
+        AppSort::NameDescending => {
+            let mut v = apps.into_iter().collect::<Vec<(&u32, &App)>>();
+            v.sort_by(|a, b| b.1.name.to_lowercase().cmp(&a.1.name.to_lowercase()));
+            v
+        }
+    }
 }
 
 impl eframe::App for EguiApp {
@@ -230,28 +257,26 @@ impl eframe::App for EguiApp {
                 ui.separator();
 
                 ui.horizontal_wrapped(|ui| {
-                    let mut selected: AppSort = Default::default();
-
                     egui::ComboBox::from_id_salt("AppSort")
-                        .selected_text(format!("{}", selected.as_str()))
+                        .selected_text(format!("{}", &self.app_sort.as_str()))
                         .show_ui(ui, |ui| {
                             ui.selectable_value(
-                                &mut selected,
+                                &mut self.app_sort,
                                 AppSort::IdAscending,
                                 AppSort::IdAscending.as_str(),
                             );
                             ui.selectable_value(
-                                &mut selected,
+                                &mut self.app_sort,
                                 AppSort::IdDescending,
                                 AppSort::IdDescending.as_str(),
                             );
                             ui.selectable_value(
-                                &mut selected,
+                                &mut self.app_sort,
                                 AppSort::NameAscending,
                                 AppSort::NameAscending.as_str(),
                             );
                             ui.selectable_value(
-                                &mut selected,
+                                &mut self.app_sort,
                                 AppSort::NameDescending,
                                 AppSort::NameDescending.as_str(),
                             );
@@ -282,13 +307,8 @@ impl eframe::App for EguiApp {
                         body.row(0.0, |mut row| {
                             row.col(|ui| {
                                 if let Some(apps) = &self.apps {
-                                    let sorted_apps: Vec<_> = match &self.sorted_apps {
-                                        AppSort::IdAscending => apps.into_iter().collect(),
-                                        AppSort::IdDescending => apps.into_iter().rev().collect(),
-                                        AppSort::NameDescending => apps.into_iter().collect(),
-                                        AppSort::NameAscending => apps.into_iter().collect(),
-                                    };
-                                    for (appid, properties) in sorted_apps.iter() {
+                                    let sorted_apps = sort_apps(self.app_sort.clone(), apps);
+                                    for (appid, properties) in sorted_apps.into_iter() {
                                         if is_filtered(&self.filter_apps, &properties.name) {
                                             ui.style_mut().wrap_mode =
                                                 Some(egui::TextWrapMode::Truncate);
@@ -307,7 +327,8 @@ impl eframe::App for EguiApp {
                             });
                             row.col(|ui| {
                                 if let Some(apps) = &self.apps {
-                                    for (appid, properties) in apps.iter() {
+                                    let sorted_apps = sort_apps(self.app_sort.clone(), apps);
+                                    for (appid, properties) in sorted_apps.into_iter() {
                                         let mut current_launch_options =
                                             properties.launch_options.clone();
                                         match self.all_launch_options.get(&appid) {
