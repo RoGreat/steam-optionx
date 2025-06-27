@@ -4,15 +4,11 @@
 
 An egui application to modify app launch options in Steam's config file.
 
-This is an alpha build. Tested on linux. Should work on all platforms.
+Only takes publicly listed games from the Steam API for now.
 
-![Alpha](assets/steam-optionx-alpha.png)
+Works on all platforms.
 
-Some features to try and implement:
-
-- Sort apps by name instead of appid
-- List only installed apps
-- More launchers???
+![Screenshot](assets/screenshot.png)
 
 ## Build
 

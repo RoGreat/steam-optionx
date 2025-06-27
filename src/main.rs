@@ -66,10 +66,11 @@ struct EguiApp {
 }
 
 fn main() -> eframe::Result {
+    let app_names = api::app_names().expect("Error getting Steam apps from Steam API");
+
     let config: Config = confy::load(CONFIG_NAME, None).unwrap_or_default();
 
     let steam_config = config.steam_config;
-    let app_names = api::app_names().expect("Error getting Steam apps from Steam API");
     let apps = if let Some(path) = &steam_config {
         backup_file(path, ".orig");
         let properties = vdf::read(path).unwrap_or(BTreeMap::default());
@@ -130,7 +131,7 @@ fn get_apps(
     properties: &BTreeMap<u32, String>,
     app_names: &BTreeMap<u32, String>,
 ) -> Result<BTreeMap<u32, App>, Box<dyn Error>> {
-    let mut result = BTreeMap::new();
+    let mut apps = BTreeMap::new();
     let appids: Vec<u32> = properties.clone().into_keys().collect();
     for appid in appids {
         if let Some(app_name) = app_names.get(&appid) {
@@ -139,10 +140,10 @@ fn get_apps(
                 name: app_name.clone(),
                 launch_options: launch_options,
             };
-            result.insert(appid, game);
+            apps.insert(appid, game);
         }
     }
-    Ok(result)
+    Ok(apps)
 }
 
 fn is_filtered(filter: &String, app_name: &String) -> bool {

@@ -1,4 +1,3 @@
-use reqwest::blocking::get;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::error::Error;
@@ -21,7 +20,8 @@ struct App {
 
 pub fn app_names() -> Result<BTreeMap<u32, String>, Box<dyn Error>> {
     let mut result = BTreeMap::new();
-    let request: AppList = get("https://api.steampowered.com/ISteamApps/GetAppList/v2/")?.json()?;
+    let request: AppList =
+        reqwest::blocking::get("https://api.steampowered.com/ISteamApps/GetAppList/v2/")?.json()?;
     let apps = request.applist.apps;
     for app in apps {
         result.insert(app.appid, app.name);
