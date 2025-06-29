@@ -1,3 +1,5 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 mod api;
 mod vdf;
 
@@ -88,7 +90,13 @@ fn main() -> eframe::Result {
         AppSort::default()
     };
 
-    let native_options = eframe::NativeOptions::default();
+    let native_options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default().with_icon(
+            eframe::icon_data::from_png_bytes(&include_bytes!("../assets/icon.png")[..])
+                .expect("Failed to load icon"),
+        ),
+        ..Default::default()
+    };
     eframe::run_native(
         "Steam OptionX",
         native_options,
