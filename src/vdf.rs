@@ -71,9 +71,27 @@ pub fn write(
     let mut config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
     for (appid, launch_options) in all_launch_options.iter() {
         let mut map = BTreeMap::new();
-        if !launch_options.trim().is_empty() {
-            map.insert(OPTION, launch_options);
+        // Get other values from app
+        let values = config
+            .software
+            .valve
+            .steam
+            .apps
+            .values
+            .get(appid.to_string().as_str());
+        // Set other values from app
+        if let Some(value) = values {
+            map = value
+                .clone()
+                .deserialize_into::<BTreeMap<String, Value>>()?;
         }
+        // If new launch options are not empty override them else delete it
+        if !launch_options.trim().is_empty() {
+            map.insert(OPTION.to_string(), serde_value::to_value(launch_options)?);
+        } else {
+            map.remove(&OPTION.to_string());
+        }
+        // Merge new values together
         let value = serde_value::to_value(map)?;
         config
             .software
