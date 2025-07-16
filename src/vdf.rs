@@ -50,7 +50,7 @@ pub fn read(filename: &String) -> Result<BTreeMap<u32, String>, Box<dyn Error>> 
     let contents = fs::read_to_string(filename)?;
     let config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
     let apps = config.software.valve.steam.apps.values;
-    for (appid, values) in apps.keys().zip(apps.values()) {
+    for (appid, values) in apps.iter() {
         let properties = values.clone().deserialize_into::<BTreeMap<String, Value>>();
         let appid = appid.clone();
         if let Some(launch_options) = properties?.get(OPTION) {
