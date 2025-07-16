@@ -11,6 +11,8 @@ use std::collections::BTreeMap;
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
+use std::str::FromStr;
+use strum_macros::{Display, EnumString};
 
 const CONFIG_NAME: &str = "steam-optionx";
 
@@ -26,34 +28,17 @@ struct App {
     launch_options: String,
 }
 
-#[derive(Default, PartialEq, Clone)]
+#[derive(Default, PartialEq, Clone, Display, EnumString)]
 enum AppSort {
     #[default]
+    #[strum(serialize = "App ID Ascending")]
     IdAscending,
+    #[strum(serialize = "App ID Descending")]
     IdDescending,
+    #[strum(serialize = "App Name Ascending")]
     NameAscending,
+    #[strum(serialize = "App Name Descending")]
     NameDescending,
-}
-
-impl AppSort {
-    fn as_str(&self) -> &'static str {
-        match self {
-            AppSort::IdAscending => "App ID Ascending",
-            AppSort::IdDescending => "App ID Descending",
-            AppSort::NameAscending => "App Name Ascending",
-            AppSort::NameDescending => "App Name Descending",
-        }
-    }
-
-    fn from(value: &str) -> Self {
-        match value {
-            "App ID Ascending" => AppSort::IdAscending,
-            "App ID Descending" => AppSort::IdDescending,
-            "App Name Ascending" => AppSort::NameAscending,
-            "App Name Descending" => AppSort::NameDescending,
-            _ => AppSort::IdAscending,
-        }
-    }
 }
 
 #[derive(Default)]
@@ -85,7 +70,7 @@ fn main() -> eframe::Result {
 
     let app_sort = config.app_sort;
     let app_sort = if let Some(sort) = &app_sort {
-        AppSort::from(sort.as_str())
+        AppSort::from_str(sort.as_str()).unwrap_or_default()
     } else {
         AppSort::default()
     };
@@ -227,7 +212,7 @@ impl eframe::App for EguiApp {
                         let config = Config {
                             steam_config: config.steam_config,
                             default_launch_options: self.default_launch_options.clone(),
-                            app_sort: Some(self.app_sort.as_str().to_string()),
+                            app_sort: Some(self.app_sort.to_string()),
                         };
                         confy::store(CONFIG_NAME, None, config).unwrap_or_default();
                         if !self.default_launch_options.trim().is_empty() {
@@ -280,27 +265,27 @@ impl eframe::App for EguiApp {
 
                 ui.horizontal_wrapped(|ui| {
                     egui::ComboBox::from_id_salt("AppSort")
-                        .selected_text(format!("{}", &self.app_sort.as_str()))
+                        .selected_text(format!("{}", &self.app_sort.to_string()))
                         .show_ui(ui, |ui| {
                             ui.selectable_value(
                                 &mut self.app_sort,
                                 AppSort::IdAscending,
-                                AppSort::IdAscending.as_str(),
+                                AppSort::IdAscending.to_string(),
                             );
                             ui.selectable_value(
                                 &mut self.app_sort,
                                 AppSort::IdDescending,
-                                AppSort::IdDescending.as_str(),
+                                AppSort::IdDescending.to_string(),
                             );
                             ui.selectable_value(
                                 &mut self.app_sort,
                                 AppSort::NameAscending,
-                                AppSort::NameAscending.as_str(),
+                                AppSort::NameAscending.to_string(),
                             );
                             ui.selectable_value(
                                 &mut self.app_sort,
                                 AppSort::NameDescending,
-                                AppSort::NameDescending.as_str(),
+                                AppSort::NameDescending.to_string(),
                             );
                         });
 
