@@ -19,8 +19,9 @@ const CONFIG_NAME: &str = "steam-optionx";
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct Config {
     steam_config: Option<String>,
-    default_launch_options: String,
+    default_launch_options: Option<String>,
     app_sort: Option<String>,
+    protondb: Option<bool>,
 }
 
 struct App {
@@ -50,6 +51,8 @@ struct EguiApp {
     default_launch_options: String,
     filter_apps: String,
     app_sort: AppSort,
+    protondb: bool,
+    url: String,
 }
 
 fn main() -> eframe::Result {
@@ -66,7 +69,7 @@ fn main() -> eframe::Result {
         None
     };
 
-    let default_launch_options = config.default_launch_options;
+    let default_launch_options = config.default_launch_options.unwrap_or_default();
 
     let app_sort = config.app_sort;
     let app_sort = if let Some(sort) = &app_sort {
@@ -74,6 +77,8 @@ fn main() -> eframe::Result {
     } else {
         AppSort::default()
     };
+
+    let protondb = config.protondb.unwrap_or_default();
 
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_icon(
@@ -92,6 +97,8 @@ fn main() -> eframe::Result {
                 apps: apps,
                 default_launch_options: default_launch_options,
                 app_sort: app_sort,
+                protondb: protondb,
+                url: "https://store.steampowered.com/app/".to_string(),
                 ..Default::default()
             }))
         }),
@@ -180,12 +187,9 @@ impl eframe::App for EguiApp {
                     {
                         self.steam_config = Some(path.to_str().unwrap_or_default().to_owned());
                         if let Some(picked_path) = &self.steam_config {
-                            let config: Config = confy::load(CONFIG_NAME, None).unwrap_or_default();
-                            let config = Config {
-                                steam_config: Some(picked_path.clone()),
-                                default_launch_options: config.default_launch_options,
-                                app_sort: config.app_sort,
-                            };
+                            let mut config: Config =
+                                confy::load(CONFIG_NAME, None).unwrap_or_default();
+                            config.steam_config = Some(picked_path.clone());
                             confy::store(CONFIG_NAME, None, config).unwrap_or_default();
                             let properties = vdf::read(picked_path).unwrap_or_default();
                             self.apps =
@@ -208,13 +212,10 @@ impl eframe::App for EguiApp {
                     let response = ui.button("💾 Save");
                     let popup_id = ui.make_persistent_id("save");
                     if response.clicked() {
-                        let config: Config = confy::load(CONFIG_NAME, None).unwrap_or_default();
-                        let previous_default_launch_options = config.default_launch_options;
-                        let config = Config {
-                            steam_config: config.steam_config,
-                            default_launch_options: self.default_launch_options.clone(),
-                            app_sort: Some(self.app_sort.to_string()),
-                        };
+                        let mut config: Config = confy::load(CONFIG_NAME, None).unwrap_or_default();
+                        let previous_default_launch_options =
+                            config.default_launch_options.unwrap_or_default();
+                        config.default_launch_options = Some(self.default_launch_options.clone());
                         confy::store(CONFIG_NAME, None, config).unwrap_or_default();
                         if !self.default_launch_options.trim().is_empty() {
                             for launch_options in self.all_launch_options.values_mut() {
@@ -267,8 +268,10 @@ impl eframe::App for EguiApp {
                 ui.separator();
 
                 ui.horizontal_wrapped(|ui| {
+                    let selected = &self.app_sort.to_string();
+                    let before = selected;
                     egui::ComboBox::from_id_salt("AppSort")
-                        .selected_text(format!("{}", &self.app_sort.to_string()))
+                        .selected_text(format!("{}", selected))
                         .show_ui(ui, |ui| {
                             ui.selectable_value(
                                 &mut self.app_sort,
@@ -291,6 +294,32 @@ impl eframe::App for EguiApp {
                                 AppSort::NameDescending.to_string(),
                             );
                         });
+
+                    if selected != before {
+                        self.app_sort = AppSort::from_str(selected).unwrap_or_default();
+                        let mut config: Config = confy::load(CONFIG_NAME, None).unwrap_or_default();
+                        config.app_sort = Some(selected.clone());
+                        confy::store(CONFIG_NAME, None, config).unwrap_or_default();
+                    }
+
+                    if cfg!(unix) {
+                        let mut selected = self.protondb;
+                        let before = selected;
+                        ui.checkbox(&mut selected, "⚛ ProtonDB");
+                        if self.protondb {
+                            self.url = "https://www.protondb.com/app/".to_string();
+                        } else {
+                            self.url = "https://store.steampowered.com/app/".to_string();
+                        }
+
+                        if selected != before {
+                            self.protondb = selected;
+                            let mut config: Config =
+                                confy::load(CONFIG_NAME, None).unwrap_or_default();
+                            config.protondb = Some(selected);
+                            confy::store(CONFIG_NAME, None, config).unwrap_or_default();
+                        }
+                    }
 
                     ui.label("Filter apps:");
                     ui.add_sized(
@@ -326,9 +355,7 @@ impl eframe::App for EguiApp {
                                                 [ui.available_width(), 20.0],
                                                 egui::Hyperlink::from_label_and_url(
                                                     &properties.name,
-                                                    "https://store.steampowered.com/app/"
-                                                        .to_owned()
-                                                        + &appid.to_string(),
+                                                    self.url.clone() + &appid.to_string(),
                                                 ),
                                             );
                                         }
