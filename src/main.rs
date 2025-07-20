@@ -268,37 +268,37 @@ impl eframe::App for EguiApp {
                 ui.separator();
 
                 ui.horizontal_wrapped(|ui| {
-                    let selected = &self.app_sort.to_string();
-                    let before = selected;
+                    let mut selected = self.app_sort.clone();
+                    let before = selected.clone();
                     egui::ComboBox::from_id_salt("AppSort")
                         .selected_text(format!("{}", selected))
                         .show_ui(ui, |ui| {
                             ui.selectable_value(
-                                &mut self.app_sort,
+                                &mut selected,
                                 AppSort::IdAscending,
                                 AppSort::IdAscending.to_string(),
                             );
                             ui.selectable_value(
-                                &mut self.app_sort,
+                                &mut selected,
                                 AppSort::IdDescending,
                                 AppSort::IdDescending.to_string(),
                             );
                             ui.selectable_value(
-                                &mut self.app_sort,
+                                &mut selected,
                                 AppSort::NameAscending,
                                 AppSort::NameAscending.to_string(),
                             );
                             ui.selectable_value(
-                                &mut self.app_sort,
+                                &mut selected,
                                 AppSort::NameDescending,
                                 AppSort::NameDescending.to_string(),
                             );
                         });
 
                     if selected != before {
-                        self.app_sort = AppSort::from_str(selected).unwrap_or_default();
+                        self.app_sort = selected;
                         let mut config: Config = confy::load(CONFIG_NAME, None).unwrap_or_default();
-                        config.app_sort = Some(selected.clone());
+                        config.app_sort = Some(self.app_sort.to_string());
                         confy::store(CONFIG_NAME, None, config).unwrap_or_default();
                     }
 
@@ -306,7 +306,7 @@ impl eframe::App for EguiApp {
                         let mut selected = self.protondb;
                         let before = selected;
                         ui.checkbox(&mut selected, "⚛ ProtonDB");
-                        if self.protondb {
+                        if selected {
                             self.url = "https://www.protondb.com/app/".to_string();
                         } else {
                             self.url = "https://store.steampowered.com/app/".to_string();
@@ -316,7 +316,7 @@ impl eframe::App for EguiApp {
                             self.protondb = selected;
                             let mut config: Config =
                                 confy::load(CONFIG_NAME, None).unwrap_or_default();
-                            config.protondb = Some(selected);
+                            config.protondb = Some(self.protondb);
                             confy::store(CONFIG_NAME, None, config).unwrap_or_default();
                         }
                     }
