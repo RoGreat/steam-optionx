@@ -9,3 +9,6 @@
 # Valve Data File
 *.vdf
 *.vdf.*
+
+# nix-direnv
+/.direnv
