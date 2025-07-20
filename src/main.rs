@@ -172,7 +172,7 @@ impl eframe::App for EguiApp {
             });
 
             ui.horizontal_wrapped(|ui| {
-                if ui.button("Open file…").clicked() {
+                if ui.button("🗁 Open file…").clicked() {
                     if let Some(path) = rfd::FileDialog::new()
                         .add_filter("text", &["vdf"])
                         .set_directory(userdata_dir())
@@ -205,8 +205,8 @@ impl eframe::App for EguiApp {
                 ui.separator();
 
                 ui.horizontal_wrapped(|ui| {
-                    let response = ui.button("Save");
-                    let popup_id = ui.make_persistent_id("Save");
+                    let response = ui.button("💾 Save");
+                    let popup_id = ui.make_persistent_id("save");
                     if response.clicked() {
                         let config: Config = confy::load(CONFIG_NAME, None).unwrap_or_default();
                         let previous_default_launch_options = config.default_launch_options;
@@ -237,17 +237,17 @@ impl eframe::App for EguiApp {
                         egui::popup::PopupCloseBehavior::CloseOnClick,
                         |ui| {
                             ui.set_min_width(100.0);
-                            ui.label("Configs saved");
+                            ui.label("File saved");
                         },
                     );
 
-                    if ui.button("Clear").clicked() {
+                    if ui.button("🗑 Clear").clicked() {
                         for launch_options in self.all_launch_options.values_mut() {
                             launch_options.clear();
                         }
                     }
 
-                    if ui.button("Restore").clicked() {
+                    if ui.button("🔄 Restore").clicked() {
                         if let Some(apps) = &self.apps {
                             for (appid, properties) in apps.iter() {
                                 let current_launch_options = &properties.launch_options;
