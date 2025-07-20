@@ -209,6 +209,7 @@ impl eframe::App for EguiApp {
                     let popup_id = ui.make_persistent_id("Save");
                     if response.clicked() {
                         let config: Config = confy::load(CONFIG_NAME, None).unwrap_or_default();
+                        let previous_default_launch_options = config.default_launch_options;
                         let config = Config {
                             steam_config: config.steam_config,
                             default_launch_options: self.default_launch_options.clone(),
@@ -217,7 +218,9 @@ impl eframe::App for EguiApp {
                         confy::store(CONFIG_NAME, None, config).unwrap_or_default();
                         if !self.default_launch_options.trim().is_empty() {
                             for launch_options in self.all_launch_options.values_mut() {
-                                if launch_options.is_empty() {
+                                if launch_options.is_empty()
+                                    || launch_options == &previous_default_launch_options
+                                {
                                     *launch_options = self.default_launch_options.clone();
                                 }
                             }
