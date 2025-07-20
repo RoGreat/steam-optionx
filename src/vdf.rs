@@ -80,8 +80,8 @@ pub fn write(
             .values
             .get(appid.to_string().as_str());
         // Set other values from app
-        if let Some(value) = values {
-            map = value
+        if let Some(values) = values {
+            map = values
                 .clone()
                 .deserialize_into::<BTreeMap<String, Value>>()?;
         }
