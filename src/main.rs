@@ -31,13 +31,13 @@ struct App {
 #[derive(Default, PartialEq, Clone, Display, EnumString)]
 enum AppSort {
     #[default]
-    #[strum(serialize = "App ID Ascending")]
+    #[strum(serialize = "⬆ App ID")]
     IdAscending,
-    #[strum(serialize = "App ID Descending")]
+    #[strum(serialize = "⬇ App ID")]
     IdDescending,
-    #[strum(serialize = "App Name Ascending")]
+    #[strum(serialize = "⬆ App Name")]
     NameAscending,
-    #[strum(serialize = "App Name Descending")]
+    #[strum(serialize = "⬇ App Name")]
     NameDescending,
 }
 
