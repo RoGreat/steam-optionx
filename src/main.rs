@@ -79,6 +79,11 @@ fn main() -> eframe::Result {
     };
 
     let protondb = config.protondb.unwrap_or_default();
+    let url = if protondb {
+        "https://www.protondb.com/app/".to_string()
+    } else {
+        "https://store.steampowered.com/app/".to_string()
+    };
 
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_icon(
@@ -98,7 +103,7 @@ fn main() -> eframe::Result {
                 default_launch_options: default_launch_options,
                 app_sort: app_sort,
                 protondb: protondb,
-                url: "https://store.steampowered.com/app/".to_string(),
+                url: url,
                 ..Default::default()
             }))
         }),
@@ -306,13 +311,13 @@ impl eframe::App for EguiApp {
                         let mut selected = self.protondb;
                         let before = selected;
                         ui.checkbox(&mut selected, "⚛ ProtonDB");
-                        if selected {
-                            self.url = "https://www.protondb.com/app/".to_string();
-                        } else {
-                            self.url = "https://store.steampowered.com/app/".to_string();
-                        }
 
                         if selected != before {
+                            if selected {
+                                self.url = "https://www.protondb.com/app/".to_string();
+                            } else {
+                                self.url = "https://store.steampowered.com/app/".to_string();
+                            }
                             self.protondb = selected;
                             let mut config: Config =
                                 confy::load(CONFIG_NAME, None).unwrap_or_default();
