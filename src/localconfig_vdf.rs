@@ -45,8 +45,8 @@ struct Apps {
     values: BTreeMap<String, Value>,
 }
 
-pub fn read(filename: &String) -> Result<BTreeMap<u32, String>, Box<dyn Error>> {
-    let mut results = BTreeMap::new();
+pub fn read_launch_options(filename: &String) -> Result<BTreeMap<u32, String>, Box<dyn Error>> {
+    let mut result = BTreeMap::new();
     let contents = fs::read_to_string(filename)?;
     let config: UserLocalConfigStore = keyvalues_serde::from_str(contents.as_str())?;
     let apps = config.software.valve.steam.apps.values;
@@ -55,15 +55,15 @@ pub fn read(filename: &String) -> Result<BTreeMap<u32, String>, Box<dyn Error>> 
         let appid = appid.clone();
         if let Some(launch_options) = properties?.get(OPTION) {
             let launch_options = launch_options.clone().deserialize_into::<String>()?;
-            results.insert(appid.parse::<u32>()?, launch_options);
+            result.insert(appid.parse::<u32>()?, launch_options);
         } else {
-            results.insert(appid.parse::<u32>()?, String::new());
+            result.insert(appid.parse::<u32>()?, String::new());
         }
     }
-    Ok(results)
+    Ok(result)
 }
 
-pub fn write(
+pub fn write_launch_options(
     filename: &String,
     all_launch_options: &BTreeMap<u32, String>,
 ) -> Result<(), Box<dyn Error>> {

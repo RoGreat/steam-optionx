@@ -1,7 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod api;
-mod vdf;
+mod libraryfolders_vdf;
+mod localconfig_vdf;
 
 use directories::BaseDirs;
 use eframe::egui;
@@ -61,10 +62,19 @@ fn main() -> eframe::Result {
     let config: Config = confy::load(CONFIG_NAME, None).unwrap_or_default();
 
     let steam_config = config.steam_config;
-    let apps = if let Some(path) = &steam_config {
-        backup_file(path, ".orig");
-        let properties = vdf::read(path).unwrap_or(BTreeMap::default());
-        Some(get_apps(&properties, &app_names).unwrap_or_default())
+    let apps = if let Some(localconfig_vdf_path) = &steam_config {
+        let libraryfolders_vdf_path = config_dir(localconfig_vdf_path);
+        let appids = libraryfolders_vdf::read_installed_apps(
+            &libraryfolders_vdf_path
+                .to_str()
+                .unwrap_or_default()
+                .to_owned(),
+        )
+        .expect("Error reading `Steam/config/libraryfolders.vdf`");
+        backup_file(localconfig_vdf_path, ".orig");
+        let properties = localconfig_vdf::read_launch_options(localconfig_vdf_path)
+            .unwrap_or(BTreeMap::default());
+        Some(get_installed_apps(&appids, &properties, &app_names).unwrap_or_default())
     } else {
         None
     };
@@ -132,13 +142,25 @@ fn userdata_dir() -> PathBuf {
     }
 }
 
-fn get_apps(
+fn config_dir(localconfig_vdf_path: &String) -> PathBuf {
+    let mut path = PathBuf::from(localconfig_vdf_path);
+    path.pop();
+    path.pop();
+    path.pop();
+    path.pop();
+    path.push("config");
+    path.push("libraryfolders.vdf");
+    path
+}
+
+fn get_installed_apps(
+    appids: &Vec<String>,
     properties: &BTreeMap<u32, String>,
     app_names: &BTreeMap<u32, String>,
 ) -> Result<BTreeMap<u32, App>, Box<dyn Error>> {
     let mut apps = BTreeMap::new();
-    let appids: Vec<u32> = properties.clone().into_keys().collect();
-    for appid in appids {
+    for appid in appids.iter() {
+        let appid = appid.parse::<u32>().unwrap();
         if let Some(app_name) = app_names.get(&appid) {
             let launch_options = properties.get(&appid).unwrap_or(&String::new()).clone();
             let game = App {
@@ -191,15 +213,27 @@ impl eframe::App for EguiApp {
                         .pick_file()
                     {
                         self.steam_config = Some(path.to_str().unwrap_or_default().to_owned());
-                        if let Some(picked_path) = &self.steam_config {
+                        if let Some(localconfig_vdf_path) = &self.steam_config {
                             let mut config: Config =
                                 confy::load(CONFIG_NAME, None).unwrap_or_default();
-                            config.steam_config = Some(picked_path.clone());
+                            config.steam_config = Some(localconfig_vdf_path.clone());
                             confy::store(CONFIG_NAME, None, config).unwrap_or_default();
-                            let properties = vdf::read(picked_path).unwrap_or_default();
-                            self.apps =
-                                Some(get_apps(&properties, &self.app_names).unwrap_or_default());
-                            backup_file(picked_path, ".orig");
+                            let libraryfolders_vdf_path = config_dir(localconfig_vdf_path);
+                            let appids = libraryfolders_vdf::read_installed_apps(
+                                &libraryfolders_vdf_path
+                                    .to_str()
+                                    .unwrap_or_default()
+                                    .to_owned(),
+                            )
+                            .expect("Error reading `Steam/config/libraryfolders.vdf`");
+                            let properties =
+                                localconfig_vdf::read_launch_options(localconfig_vdf_path)
+                                    .unwrap_or_default();
+                            self.apps = Some(
+                                get_installed_apps(&appids, &properties, &self.app_names)
+                                    .unwrap_or_default(),
+                            );
+                            backup_file(localconfig_vdf_path, ".orig");
                         }
                     }
                 }
@@ -232,7 +266,10 @@ impl eframe::App for EguiApp {
                             }
                         }
                         backup_file(picked_path, ".bak");
-                        _ = vdf::write(picked_path, &self.all_launch_options);
+                        _ = localconfig_vdf::write_launch_options(
+                            picked_path,
+                            &self.all_launch_options,
+                        );
                         ui.memory_mut(|mem| mem.open_popup(popup_id));
                     };
                     egui::popup_above_or_below_widget(
