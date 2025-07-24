@@ -122,6 +122,18 @@ fn main() -> eframe::Result {
     )
 }
 
+fn cache_dir() -> String {
+    if let Some(proj_dirs) = ProjectDirs::from("", OWNER_NAME, APP_NAME) {
+        proj_dirs
+            .cache_dir()
+            .to_str()
+            .unwrap_or_default()
+            .to_owned()
+    } else {
+        String::new()
+    }
+}
+
 fn backup_file(picked_path: &String, ext: &str) {
     let backup_path = PathBuf::from(picked_path.clone() + ext);
     match ext {
