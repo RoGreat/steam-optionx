@@ -1,10 +1,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod api;
+mod consts;
 mod libraryfolders_vdf;
 mod localconfig_vdf;
 
-use directories::{BaseDirs, ProjectDirs};
+use directories::BaseDirs;
 use eframe::egui;
 use egui_extras::{Column, TableBuilder};
 use serde::{Deserialize, Serialize};
@@ -14,10 +15,6 @@ use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 use strum_macros::{Display, EnumString};
-
-const APP_NAME: &str = "Steam OptionX";
-const CODE_NAME: &str = "steam-optionx";
-const OWNER_NAME: &str = "RoGreat";
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct Config {
@@ -59,9 +56,10 @@ struct EguiApp {
 }
 
 fn main() -> eframe::Result {
-    let app_names = api::app_names().expect("Error getting Steam apps from Steam API");
+    let refresh = false;
+    let app_names = api::app_names(refresh).expect("Error getting Steam apps from Steam API");
 
-    let config: Config = confy::load(CODE_NAME, None).unwrap_or_default();
+    let config: Config = confy::load(crate::consts::CODE_NAME, None).unwrap_or_default();
 
     let steam_config = config.steam_config;
     let apps = if let Some(localconfig_vdf_path) = &steam_config {
@@ -105,7 +103,7 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
     eframe::run_native(
-        APP_NAME,
+        consts::APP_NAME,
         native_options,
         Box::new(|_cc| {
             Ok(Box::new(EguiApp {
@@ -120,18 +118,6 @@ fn main() -> eframe::Result {
             }))
         }),
     )
-}
-
-fn cache_dir() -> String {
-    if let Some(proj_dirs) = ProjectDirs::from("", OWNER_NAME, APP_NAME) {
-        proj_dirs
-            .cache_dir()
-            .to_str()
-            .unwrap_or_default()
-            .to_owned()
-    } else {
-        String::new()
-    }
 }
 
 fn backup_file(picked_path: &String, ext: &str) {
@@ -229,9 +215,9 @@ impl eframe::App for EguiApp {
                         self.steam_config = Some(path.to_str().unwrap_or_default().to_owned());
                         if let Some(localconfig_vdf_path) = &self.steam_config {
                             let mut config: Config =
-                                confy::load(CODE_NAME, None).unwrap_or_default();
+                                confy::load(consts::CODE_NAME, None).unwrap_or_default();
                             config.steam_config = Some(localconfig_vdf_path.clone());
-                            confy::store(CODE_NAME, None, config).unwrap_or_default();
+                            confy::store(consts::CODE_NAME, None, config).unwrap_or_default();
                             backup_file(localconfig_vdf_path, ".orig");
                             let libraryfolders_vdf_path = config_dir(localconfig_vdf_path);
                             let properties =
@@ -252,6 +238,47 @@ impl eframe::App for EguiApp {
                     }
                 }
 
+                let response = ui.button("⟳ Refresh");
+                let popup_id = ui.make_persistent_id("refresh");
+                if response.clicked() {
+                    let refresh = true;
+                    self.app_names =
+                        api::app_names(refresh).expect("Error getting Steam apps from Steam API");
+                    if let Some(localconfig_vdf_path) = &self.steam_config {
+                        let mut config: Config =
+                            confy::load(consts::CODE_NAME, None).unwrap_or_default();
+                        config.steam_config = Some(localconfig_vdf_path.clone());
+                        confy::store(consts::CODE_NAME, None, config).unwrap_or_default();
+                        backup_file(localconfig_vdf_path, ".orig");
+                        let libraryfolders_vdf_path = config_dir(localconfig_vdf_path);
+                        let properties = localconfig_vdf::read_launch_options(localconfig_vdf_path)
+                            .unwrap_or_default();
+                        let appids = libraryfolders_vdf::read_installed_apps(
+                            &libraryfolders_vdf_path
+                                .to_str()
+                                .unwrap_or_default()
+                                .to_owned(),
+                        )
+                        .unwrap_or(properties.keys().map(|appid| appid.to_string()).collect());
+                        self.apps = Some(
+                            get_installed_apps(&appids, &properties, &self.app_names)
+                                .unwrap_or_default(),
+                        );
+                        ui.memory_mut(|mem| mem.open_popup(popup_id));
+                    }
+                }
+                egui::popup_above_or_below_widget(
+                    ui,
+                    popup_id,
+                    &response,
+                    egui::AboveOrBelow::Below,
+                    egui::popup::PopupCloseBehavior::CloseOnClick,
+                    |ui| {
+                        ui.set_min_width(100.0);
+                        ui.label("Apps refreshed");
+                    },
+                );
+
                 if let Some(picked_path) = &self.steam_config {
                     ui.label("Picked file:");
                     ui.monospace(picked_path);
@@ -265,11 +292,12 @@ impl eframe::App for EguiApp {
                     let response = ui.button("💾 Save");
                     let popup_id = ui.make_persistent_id("save");
                     if response.clicked() {
-                        let mut config: Config = confy::load(CODE_NAME, None).unwrap_or_default();
+                        let mut config: Config =
+                            confy::load(consts::CODE_NAME, None).unwrap_or_default();
                         let previous_default_launch_options =
                             config.default_launch_options.unwrap_or_default();
                         config.default_launch_options = Some(self.default_launch_options.clone());
-                        confy::store(CODE_NAME, None, config).unwrap_or_default();
+                        confy::store(consts::CODE_NAME, None, config).unwrap_or_default();
                         if !self.default_launch_options.trim().is_empty() {
                             for launch_options in self.all_launch_options.values_mut() {
                                 if launch_options.is_empty()
@@ -353,9 +381,10 @@ impl eframe::App for EguiApp {
 
                     if selected != before {
                         self.app_sort = selected;
-                        let mut config: Config = confy::load(CODE_NAME, None).unwrap_or_default();
+                        let mut config: Config =
+                            confy::load(consts::CODE_NAME, None).unwrap_or_default();
                         config.app_sort = Some(self.app_sort.to_string());
-                        confy::store(CODE_NAME, None, config).unwrap_or_default();
+                        confy::store(consts::CODE_NAME, None, config).unwrap_or_default();
                     }
 
                     if cfg!(unix) {
@@ -371,9 +400,9 @@ impl eframe::App for EguiApp {
                             }
                             self.protondb = selected;
                             let mut config: Config =
-                                confy::load(CODE_NAME, None).unwrap_or_default();
+                                confy::load(consts::CODE_NAME, None).unwrap_or_default();
                             config.protondb = Some(self.protondb);
-                            confy::store(CODE_NAME, None, config).unwrap_or_default();
+                            confy::store(consts::CODE_NAME, None, config).unwrap_or_default();
                         }
                     }
 
