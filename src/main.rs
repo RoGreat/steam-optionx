@@ -59,7 +59,7 @@ fn main() -> eframe::Result {
     let refresh = false;
     let app_names = api::app_names(refresh).expect("Error getting Steam apps from Steam API");
 
-    let config: Config = confy::load(crate::consts::CODE_NAME, None).unwrap_or_default();
+    let config: Config = confy::load(consts::CODE_NAME, None).unwrap_or_default();
 
     let steam_config = config.steam_config;
     let apps = if let Some(localconfig_vdf_path) = &steam_config {
