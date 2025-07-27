@@ -1,5 +1,6 @@
 use crate::consts;
 use directories::ProjectDirs;
+use log::debug;
 use serde::Deserialize;
 use serde_json;
 use std::collections::BTreeMap;
@@ -28,16 +29,19 @@ pub fn app_names(refresh: bool) -> Result<BTreeMap<u32, String>, Box<dyn Error>>
     cache_dir.push("applist.json");
 
     if refresh || !fs::exists(&cache_dir)? {
-        let mut resp =
-            reqwest::blocking::get("https://api.steampowered.com/ISteamApps/GetAppList/v2/")?;
+        let api = "https://api.steampowered.com/ISteamApps/GetAppList/v2/";
+        let mut resp = reqwest::blocking::get(api)?;
+        debug!("GET {}", api);
         let mut buf: Vec<u8> = vec![];
         resp.copy_to(&mut buf)?;
         fs::write(&cache_dir, buf)?;
+        debug!("write cache: {}", &cache_dir.display());
     };
 
     let cache = fs::read_to_string(&cache_dir)?;
     let json: AppList = serde_json::from_str(&cache)?;
     let apps = json.applist.apps;
+    debug!("read cache: {}", &cache_dir.display());
 
     let mut result = BTreeMap::new();
     for app in apps {

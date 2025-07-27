@@ -8,6 +8,7 @@ mod localconfig_vdf;
 use directories::BaseDirs;
 use eframe::egui;
 use egui_extras::{Column, TableBuilder};
+use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::error::Error;
@@ -55,38 +56,25 @@ struct EguiApp {
     url: String,
 }
 
-fn update_apps(
-    localconfig_vdf_path: &String,
-    app_names: &BTreeMap<u32, String>,
-) -> Option<BTreeMap<u32, App>> {
-    backup_file(localconfig_vdf_path, ".orig").expect("Error backup failed");
-    let libraryfolders_vdf_path = config_dir(localconfig_vdf_path);
-    let properties =
-        localconfig_vdf::read_launch_options(localconfig_vdf_path).unwrap_or(BTreeMap::default());
-    let appids = libraryfolders_vdf::read_installed_apps(
-        &libraryfolders_vdf_path
-            .to_str()
-            .unwrap_or_default()
-            .to_owned(),
-    )
-    .unwrap_or(properties.keys().map(|appid| appid.to_string()).collect());
-    Some(get_installed_apps(&appids, &properties, &app_names).unwrap_or_default())
-}
-
 fn main() -> eframe::Result {
+    env_logger::init();
+
     let refresh = false;
     let app_names = api::app_names(refresh).expect("Error getting Steam apps from Steam API");
 
     let config: Config = confy::load(consts::CODE_NAME, None).unwrap_or_default();
+    debug!("{} config loaded", consts::CODE_NAME);
 
     let steam_config = config.steam_config;
     let apps = if let Some(localconfig_vdf_path) = &steam_config {
+        debug!("steam_config: {}", localconfig_vdf_path);
         update_apps(localconfig_vdf_path, &app_names)
     } else {
         None
     };
 
     let default_launch_options = config.default_launch_options.unwrap_or_default();
+    debug!("default_launch_options: {}", default_launch_options);
 
     let app_sort = config.app_sort;
     let app_sort = if let Some(sort) = &app_sort {
@@ -94,8 +82,10 @@ fn main() -> eframe::Result {
     } else {
         AppSort::default()
     };
+    debug!("app_sort: {}", app_sort);
 
     let protondb = config.protondb.unwrap_or_default();
+    debug!("protondb: {}", protondb);
     let url = if protondb {
         "https://www.protondb.com/app/".to_string()
     } else {
@@ -127,6 +117,24 @@ fn main() -> eframe::Result {
     )
 }
 
+fn update_apps(
+    localconfig_vdf_path: &String,
+    app_names: &BTreeMap<u32, String>,
+) -> Option<BTreeMap<u32, App>> {
+    backup_file(localconfig_vdf_path, ".orig").expect("Error backup failed");
+    let libraryfolders_vdf_path = config_dir(localconfig_vdf_path);
+    let properties =
+        localconfig_vdf::read_launch_options(localconfig_vdf_path).unwrap_or(BTreeMap::default());
+    let appids = libraryfolders_vdf::read_installed_apps(
+        &libraryfolders_vdf_path
+            .to_str()
+            .unwrap_or_default()
+            .to_owned(),
+    )
+    .unwrap_or(properties.keys().map(|appid| appid.to_string()).collect());
+    Some(get_installed_apps(&appids, &properties, &app_names).unwrap_or_default())
+}
+
 fn backup_file(picked_path: &String, ext: &str) -> Result<(), Box<dyn Error>> {
     let backup_path = PathBuf::from(picked_path.clone() + ext);
     match ext {
@@ -139,7 +147,7 @@ fn backup_file(picked_path: &String, ext: &str) -> Result<(), Box<dyn Error>> {
             fs::copy(PathBuf::from(picked_path), backup_path)?;
         }
         _ => {
-            panic!("Error invalid backup extension");
+            warn!("backup extension does not exist");
         }
     }
     Ok(())
