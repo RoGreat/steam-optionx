@@ -138,7 +138,9 @@ fn backup_file(picked_path: &String, ext: &str) -> Result<(), Box<dyn Error>> {
         ".bak" => {
             fs::copy(PathBuf::from(picked_path), backup_path)?;
         }
-        _ => {}
+        _ => {
+            panic!("Error invalid backup extension");
+        }
     }
     Ok(())
 }
