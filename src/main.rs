@@ -135,6 +135,16 @@ fn update_apps(
     Some(get_installed_apps(&appids, &properties, &app_names).unwrap_or_default())
 }
 
+fn update_launch_options(
+    apps: &BTreeMap<u32, App>,
+    all_launch_options: &mut BTreeMap<u32, String>,
+) {
+    for (appid, properties) in apps.iter() {
+        let current_launch_options = &properties.launch_options;
+        all_launch_options.insert(*appid, current_launch_options.clone());
+    }
+}
+
 fn backup_file(picked_path: &String, ext: &str) -> Result<(), Box<dyn Error>> {
     let backup_path = PathBuf::from(picked_path.clone() + ext);
     match ext {
@@ -256,6 +266,9 @@ impl eframe::App for EguiApp {
                         config.steam_config = Some(localconfig_vdf_path.clone());
                         confy::store(consts::CODE_NAME, None, config).unwrap_or_default();
                         self.apps = update_apps(localconfig_vdf_path, &self.app_names);
+                        if let Some(apps) = &self.apps {
+                            update_launch_options(apps, &mut self.all_launch_options)
+                        }
                         ui.memory_mut(|mem| mem.open_popup(popup_id));
                     }
                 }
@@ -327,12 +340,7 @@ impl eframe::App for EguiApp {
 
                     if ui.button("🔄 Restore").clicked() {
                         if let Some(apps) = &self.apps {
-                            for (appid, properties) in apps.iter() {
-                                let current_launch_options = &properties.launch_options;
-                                self.all_launch_options
-                                    .insert(*appid, current_launch_options.clone())
-                                    .expect("Error table update failed");
-                            }
+                            update_launch_options(apps, &mut self.all_launch_options)
                         }
                     }
                     ui.label("Set default launch options:");
