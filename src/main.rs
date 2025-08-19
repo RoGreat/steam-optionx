@@ -151,10 +151,12 @@ fn backup_file(picked_path: &String, ext: &str) -> Result<(), Box<dyn Error>> {
         ".orig" => {
             if !backup_path.is_file() {
                 fs::copy(PathBuf::from(picked_path), backup_path)?;
+                debug!("initial backup created");
             }
         }
         ".bak" => {
             fs::copy(PathBuf::from(picked_path), backup_path)?;
+            debug!("backup created");
         }
         _ => {
             warn!("backup extension does not exist");
