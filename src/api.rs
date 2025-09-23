@@ -51,7 +51,7 @@ pub fn app_names(refresh: bool) -> Result<BTreeMap<u32, String>, Box<dyn Error>>
 }
 
 fn cache_dir() -> Result<PathBuf, Box<dyn Error>> {
-    if let Some(proj_dirs) = ProjectDirs::from("", consts::OWNER_NAME, consts::APP_NAME) {
+    if let Some(proj_dirs) = ProjectDirs::from("", consts::OWNER_NAME, consts::CODE_NAME) {
         let dirs = proj_dirs.cache_dir().to_path_buf();
         fs::create_dir_all(&dirs)?;
         Ok(dirs)
