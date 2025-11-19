@@ -2,9 +2,7 @@ use crate::consts;
 use directories::ProjectDirs;
 use log::debug;
 use serde::Deserialize;
-use serde_json;
 use std::collections::BTreeMap;
-use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 
@@ -24,24 +22,31 @@ struct App {
     name: String,
 }
 
-pub fn app_names(refresh: bool) -> Result<BTreeMap<u32, String>, Box<dyn Error>> {
-    let mut cache_dir = cache_dir()?;
+pub fn app_names(refresh: bool) -> BTreeMap<u32, String> {
+    let mut cache_dir = cache_dir().unwrap();
     cache_dir.push("applist.json");
 
-    if refresh || !fs::exists(&cache_dir)? {
+    if refresh || !fs::exists(&cache_dir).unwrap() {
         let api = "https://api.steampowered.com/ISteamApps/GetAppList/v2/";
         let resp = reqwest::blocking::get(api);
         if let Ok(mut resp) = resp {
             debug!("GET {}", api);
             let mut buf: Vec<u8> = vec![];
-            resp.copy_to(&mut buf)?;
-            fs::write(&cache_dir, buf)?;
-            debug!("write cache: {}", &cache_dir.display());
+            let json: Result<AppList, serde_json::Error> = serde_json::from_slice(buf.as_slice());
+            if let Ok(_) = json {
+                resp.copy_to(&mut buf).expect("Unable to copy to buffer");
+                fs::write(&cache_dir, buf).expect("Unable to write to file");
+                debug!("write cache: {}", &cache_dir.display());
+            } else {
+                debug!("bad response reading from cache");
+            }
+        } else {
+            debug!("no response reading from cache");
         }
     };
 
-    let cache = fs::read_to_string(&cache_dir)?;
-    let json: AppList = serde_json::from_str(&cache)?;
+    let cache = fs::read_to_string(&cache_dir).expect("Unable to read from cache");
+    let json: AppList = serde_json::from_str(&cache).expect("Invalid JSON file");
     let apps = json.applist.apps;
     debug!("read cache: {}", &cache_dir.display());
 
@@ -49,10 +54,10 @@ pub fn app_names(refresh: bool) -> Result<BTreeMap<u32, String>, Box<dyn Error>>
     for app in apps {
         result.insert(app.appid, app.name);
     }
-    Ok(result)
+    result
 }
 
-fn cache_dir() -> Result<PathBuf, Box<dyn Error>> {
+fn cache_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
     if let Some(proj_dirs) = ProjectDirs::from("", consts::OWNER_NAME, consts::CODE_NAME) {
         let dirs = proj_dirs.cache_dir().to_path_buf();
         fs::create_dir_all(&dirs)?;

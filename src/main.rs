@@ -60,7 +60,7 @@ fn main() -> eframe::Result {
     env_logger::init();
 
     let refresh = false;
-    let app_names = api::app_names(refresh).expect("Error getting Steam apps from Steam API");
+    let app_names = api::app_names(refresh);
 
     let config: Config = confy::load(consts::CODE_NAME, None).unwrap_or_default();
     debug!("{} config loaded", consts::CODE_NAME);
@@ -260,8 +260,7 @@ impl eframe::App for EguiApp {
                 let popup_id = ui.make_persistent_id("refresh");
                 if response.clicked() {
                     let refresh = true;
-                    self.app_names =
-                        api::app_names(refresh).expect("Error getting Steam apps from Steam API");
+                    self.app_names = api::app_names(refresh);
                     if let Some(localconfig_vdf_path) = &self.steam_config {
                         let mut config: Config =
                             confy::load(consts::CODE_NAME, None).unwrap_or_default();
