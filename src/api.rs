@@ -30,12 +30,14 @@ pub fn app_names(refresh: bool) -> Result<BTreeMap<u32, String>, Box<dyn Error>>
 
     if refresh || !fs::exists(&cache_dir)? {
         let api = "https://api.steampowered.com/ISteamApps/GetAppList/v2/";
-        let mut resp = reqwest::blocking::get(api)?;
-        debug!("GET {}", api);
-        let mut buf: Vec<u8> = vec![];
-        resp.copy_to(&mut buf)?;
-        fs::write(&cache_dir, buf)?;
-        debug!("write cache: {}", &cache_dir.display());
+        let resp = reqwest::blocking::get(api);
+        if let Ok(mut resp) = resp {
+            debug!("GET {}", api);
+            let mut buf: Vec<u8> = vec![];
+            resp.copy_to(&mut buf)?;
+            fs::write(&cache_dir, buf)?;
+            debug!("write cache: {}", &cache_dir.display());
+        }
     };
 
     let cache = fs::read_to_string(&cache_dir)?;
