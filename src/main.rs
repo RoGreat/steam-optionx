@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod api;
+mod appmanifest_acf;
 mod consts;
 mod libraryfolders_vdf;
 mod localconfig_vdf;
@@ -68,10 +69,12 @@ fn main() -> eframe::Result {
     let steam_config = config.steam_config;
     let apps = if let Some(localconfig_vdf_path) = &steam_config {
         let libraryfolders_vdf_path = config_dir(localconfig_vdf_path);
-        debug!(
-            "steam_paths: {:?}",
-            libraryfolders_vdf::read_paths(libraryfolders_vdf_path).unwrap_or_default()
-        );
+        let appids = libraryfolders_vdf::read_installed_apps(libraryfolders_vdf_path.clone())
+            .unwrap_or_default();
+        let steam_paths =
+            libraryfolders_vdf::read_paths(libraryfolders_vdf_path).unwrap_or_default();
+        debug!("steam_paths: {:?}", steam_paths);
+        let apps = appmanifest_acf::read_app_names(appids, steam_paths);
         debug!("steam_config: {}", localconfig_vdf_path);
         update_apps(localconfig_vdf_path, &app_names)
     } else {
