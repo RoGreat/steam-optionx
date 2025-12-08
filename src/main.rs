@@ -67,6 +67,11 @@ fn main() -> eframe::Result {
 
     let steam_config = config.steam_config;
     let apps = if let Some(localconfig_vdf_path) = &steam_config {
+        let libraryfolders_vdf_path = config_dir(localconfig_vdf_path);
+        debug!(
+            "steam_paths: {:?}",
+            libraryfolders_vdf::read_paths(libraryfolders_vdf_path).unwrap_or_default()
+        );
         debug!("steam_config: {}", localconfig_vdf_path);
         update_apps(localconfig_vdf_path, &app_names)
     } else {
@@ -125,13 +130,8 @@ fn update_apps(
     let libraryfolders_vdf_path = config_dir(localconfig_vdf_path);
     let properties =
         localconfig_vdf::read_launch_options(localconfig_vdf_path).unwrap_or(BTreeMap::default());
-    let appids = libraryfolders_vdf::read_installed_apps(
-        &libraryfolders_vdf_path
-            .to_str()
-            .unwrap_or_default()
-            .to_owned(),
-    )
-    .unwrap_or(properties.keys().map(|appid| appid.to_string()).collect());
+    let appids = libraryfolders_vdf::read_installed_apps(libraryfolders_vdf_path)
+        .unwrap_or(properties.keys().map(|appid| appid.to_string()).collect());
     Some(get_installed_apps(&appids, &properties, &app_names).unwrap_or_default())
 }
 
