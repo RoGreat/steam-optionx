@@ -2,7 +2,7 @@
 
 An [egui](https://github.com/emilk/egui) application to modify app launch options in Steam's config file.
 
-Only takes publicly listed games from the [Steam API](https://partner.steamgames.com/doc/webapi/ISteamApps#GetAppList) for now.
+This application reads Steam's configuration files to determine app details.
 
 Works on all platforms.
 
