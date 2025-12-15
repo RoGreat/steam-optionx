@@ -1,6 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod api;
 mod appmanifest_acf;
 mod consts;
 mod libraryfolders_vdf;
@@ -47,7 +46,6 @@ enum AppSort {
 #[derive(Default)]
 struct EguiApp {
     steam_config: Option<String>,
-    app_names: BTreeMap<u32, String>,
     apps: Option<BTreeMap<u32, App>>,
     all_launch_options: BTreeMap<u32, String>,
     default_launch_options: String,
@@ -60,23 +58,12 @@ struct EguiApp {
 fn main() -> eframe::Result {
     env_logger::init();
 
-    let refresh = false;
-    let app_names = api::app_names(refresh);
-
     let config: Config = confy::load(consts::CODE_NAME, None).unwrap_or_default();
     debug!("{} config loaded", consts::CODE_NAME);
 
     let steam_config = config.steam_config;
     let apps = if let Some(localconfig_vdf_path) = &steam_config {
-        let libraryfolders_vdf_path = config_dir(localconfig_vdf_path);
-        let appids = libraryfolders_vdf::read_installed_apps(libraryfolders_vdf_path.clone())
-            .unwrap_or_default();
-        let steam_paths =
-            libraryfolders_vdf::read_paths(libraryfolders_vdf_path).unwrap_or_default();
-        debug!("steam_paths: {:?}", steam_paths);
-        let apps = appmanifest_acf::read_app_names(appids, steam_paths);
-        debug!("steam_config: {}", localconfig_vdf_path);
-        update_apps(localconfig_vdf_path, &app_names)
+        update_apps(localconfig_vdf_path)
     } else {
         None
     };
@@ -113,7 +100,6 @@ fn main() -> eframe::Result {
         Box::new(|_cc| {
             Ok(Box::new(EguiApp {
                 steam_config: steam_config,
-                app_names: app_names,
                 apps: apps,
                 default_launch_options: default_launch_options,
                 app_sort: app_sort,
@@ -125,16 +111,22 @@ fn main() -> eframe::Result {
     )
 }
 
-fn update_apps(
-    localconfig_vdf_path: &String,
-    app_names: &BTreeMap<u32, String>,
-) -> Option<BTreeMap<u32, App>> {
+fn update_apps(localconfig_vdf_path: &String) -> Option<BTreeMap<u32, App>> {
     backup_file(localconfig_vdf_path, ".orig").expect("Error backup failed");
-    let libraryfolders_vdf_path = config_dir(localconfig_vdf_path);
     let properties =
         localconfig_vdf::read_launch_options(localconfig_vdf_path).unwrap_or(BTreeMap::default());
-    let appids = libraryfolders_vdf::read_installed_apps(libraryfolders_vdf_path)
-        .unwrap_or(properties.keys().map(|appid| appid.to_string()).collect());
+
+    let libraryfolders_vdf_path = config_dir(localconfig_vdf_path);
+    let apps = libraryfolders_vdf::read_installed_apps(libraryfolders_vdf_path.clone())
+        .unwrap_or_default();
+    let app_names: BTreeMap<u32, String> =
+        appmanifest_acf::read_app_names(apps).unwrap_or(properties.clone());
+    let appids: Vec<String> = app_names
+        .clone()
+        .into_keys()
+        .map(|appid| appid.to_string())
+        .collect();
+
     Some(get_installed_apps(&appids, &properties, &app_names).unwrap_or_default())
 }
 
@@ -254,7 +246,7 @@ impl eframe::App for EguiApp {
                                 confy::load(consts::CODE_NAME, None).unwrap_or_default();
                             config.steam_config = Some(localconfig_vdf_path.clone());
                             confy::store(consts::CODE_NAME, None, config).unwrap_or_default();
-                            self.apps = update_apps(localconfig_vdf_path, &self.app_names);
+                            self.apps = update_apps(localconfig_vdf_path);
                         }
                     }
                 }
@@ -262,14 +254,12 @@ impl eframe::App for EguiApp {
                 let response = ui.button("⟳ Refresh");
                 let popup_id = ui.make_persistent_id("refresh");
                 if response.clicked() {
-                    let refresh = true;
-                    self.app_names = api::app_names(refresh);
                     if let Some(localconfig_vdf_path) = &self.steam_config {
                         let mut config: Config =
                             confy::load(consts::CODE_NAME, None).unwrap_or_default();
                         config.steam_config = Some(localconfig_vdf_path.clone());
                         confy::store(consts::CODE_NAME, None, config).unwrap_or_default();
-                        self.apps = update_apps(localconfig_vdf_path, &self.app_names);
+                        self.apps = update_apps(localconfig_vdf_path);
                         if let Some(apps) = &self.apps {
                             update_launch_options(apps, &mut self.all_launch_options)
                         }

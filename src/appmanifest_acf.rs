@@ -1,40 +1,38 @@
 use log::debug;
 use serde::Deserialize;
-use serde_value::Value;
 use std::collections::BTreeMap;
+use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 
 #[derive(Deserialize, Debug, Clone)]
 struct AppState {
-    #[serde(flatten)]
-    id: BTreeMap<String, Value>,
+    name: String,
 }
 
-pub fn read_app_names(appids: Vec<String>, paths: Vec<PathBuf>) {
-    // -> Result<BTreeMap<u32, String>, Box<dyn Error>> {
-    for path in paths {
+pub fn read_app_names(
+    apps: (Vec<PathBuf>, Vec<Vec<String>>),
+) -> Result<BTreeMap<u32, String>, Box<dyn Error>> {
+    let mut result = BTreeMap::new();
+    for (i, path) in apps.0.iter().enumerate() {
         let mut path = PathBuf::from(path.clone());
         path.push("steamapps");
-        for appid in &appids {
+        for appid in apps.1[i].iter() {
             let filename = "appmanifest_".to_owned() + appid.as_str() + ".acf";
             let mut path = PathBuf::from(path.clone());
-            path.push(filename);
-            debug!("{:?}", path);
-            fs::read_to_string(path).unwrap();
+            path.push(filename.clone());
+            let contents = fs::read_to_string(&path);
+            let contents = match contents {
+                Ok(contents) => contents,
+                Err(_) => {
+                    debug!("error reading: {}", &path.display());
+                    continue;
+                }
+            };
+            let appstate: AppState = keyvalues_serde::from_str(contents.as_str())?;
+            let name = appstate.name;
+            result.insert(appid.parse::<u32>()?, name.clone());
         }
     }
-    // let contents = fs::read_to_string()?;
-    // let libraryfolders: LibraryFolders = keyvalues_serde::from_str(contents.as_str())?;
-    // let disk = libraryfolders.id;
-    // let mut result = vec![];
-    // for (_, values) in disk.iter() {
-    //     let values = values.clone().deserialize_into::<BTreeMap<String, Value>>();
-    //     for value in values.iter() {
-    //         let path = value.get("path").expect("No paths found");
-    //         let path = path.clone().deserialize_into::<PathBuf>()?;
-    //         result.push(path);
-    //     }
-    // }
-    // Ok(result)
+    Ok(result)
 }
