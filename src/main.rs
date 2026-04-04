@@ -25,6 +25,11 @@ struct Config {
     protondb: Option<bool>,
 }
 
+#[derive(Debug, Default, Serialize, Deserialize)]
+struct Profile {
+    options: Option<BTreeMap<String, String>>,
+}
+
 struct App {
     name: String,
     launch_options: String,
@@ -297,6 +302,15 @@ impl eframe::App for EguiApp {
                             config.default_launch_options.unwrap_or_default();
                         config.default_launch_options = Some(self.default_launch_options.clone());
                         confy::store(consts::CODE_NAME, None, config).unwrap_or_default();
+
+                        let mut profile: Profile = Profile::default();
+                        let mut options: BTreeMap<String, String> = BTreeMap::new();
+                        for (key, value) in self.all_launch_options.iter() {
+                            options.insert(key.to_string(), value.clone());
+                        }
+                        profile.options = Some(options);
+                        confy::store(consts::CODE_NAME, "profile", profile).unwrap();
+
                         if !self.default_launch_options.trim().is_empty() {
                             for launch_options in self.all_launch_options.values_mut() {
                                 if launch_options.is_empty()
@@ -333,7 +347,15 @@ impl eframe::App for EguiApp {
                     }
 
                     if ui.button("🔄 Restore").clicked() {
-                        if let Some(apps) = &self.apps {
+                        let profile: Profile =
+                            confy::load(consts::CODE_NAME, "profile").unwrap_or_default();
+                        if let Some(options) = &profile.options {
+                            let mut profile: BTreeMap<u32, String> = BTreeMap::new();
+                            for (key, value) in options.iter() {
+                                profile.insert(key.parse::<u32>().unwrap(), value.clone());
+                            }
+                            self.all_launch_options = profile.clone();
+                        } else if let Some(apps) = &self.apps {
                             update_launch_options(apps, &mut self.all_launch_options)
                         }
                     }
