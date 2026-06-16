@@ -109,3 +109,19 @@ pub fn write_launch_options(
     file.write_all(serialized.as_bytes())?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_read_launch_options() {
+        assert_eq!(
+            read_launch_options(&"./tests/localconfig.vdf".to_string()).unwrap(),
+            BTreeMap::from([
+                (1111111, String::from("gamemoderun %command%")),
+                (9999999, String::from("gamescope -- %command%"))
+            ])
+        )
+    }
+}

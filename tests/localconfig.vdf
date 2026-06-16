@@ -1,0 +1,35 @@
+"UserLocalConfigStore"
+{
+        "Software"
+        {
+                "Valve"
+                {
+                        "Steam"
+                        {
+                                "apps"
+                                {
+                                        "1111111"
+                                        {
+                                                "LastPlayed"            "1111111111"
+                                                "Playtime"              "1111"
+                                                "cloud"
+                                                {
+                                                        "last_sync_state"               "synchronized"
+                                                }
+                                                "LaunchOptions"         "gamemoderun %command%"
+                                        }
+                                        "9999999"
+                                        {
+                                                "LastPlayed"            "9999999999"
+                                                "Playtime"              "9999"
+                                                "cloud"
+                                                {
+                                                        "last_sync_state"               "synchronized"
+                                                }
+                                                "LaunchOptions"         "gamescope -- %command%"
+                                        }
+                                }
+						}
+				}
+		}
+}
