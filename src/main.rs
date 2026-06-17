@@ -30,6 +30,7 @@ struct Profile {
     options: Option<BTreeMap<String, String>>,
 }
 
+#[derive(Debug)]
 struct App {
     name: String,
     launch_options: String,
@@ -72,6 +73,7 @@ fn main() -> eframe::Result {
     } else {
         None
     };
+    debug!("apps: {:?}", apps);
 
     let default_launch_options = config.default_launch_options.unwrap_or_default();
     debug!("default_launch_options: {}", default_launch_options);
