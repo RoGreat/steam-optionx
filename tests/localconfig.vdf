@@ -28,6 +28,16 @@
                                                 }
                                                 "LaunchOptions"         "gamescope -- %command%"
                                         }
+                                        "-1111111"
+                                        {
+                                                "LastPlayed"            "-1111111111"
+                                                "Playtime"              "-1111"
+                                                "cloud"
+                                                {
+                                                        "last_sync_state"               "synchronized"
+                                                }
+                                                "LaunchOptions"         "PROTON_LOG=1 gamemoderun %command%"
+                                        }
                                 }
 						}
 				}

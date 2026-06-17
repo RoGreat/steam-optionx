@@ -69,6 +69,7 @@ fn main() -> eframe::Result {
 
     let steam_config = config.steam_config;
     let apps = if let Some(localconfig_vdf_path) = &steam_config {
+        debug!("localconfig.vdf: {}", localconfig_vdf_path);
         update_apps(localconfig_vdf_path)
     } else {
         None

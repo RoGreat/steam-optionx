@@ -1,3 +1,4 @@
+use log::warn;
 use serde::{Deserialize, Serialize};
 use serde_value::Value;
 use std::collections::BTreeMap;
@@ -52,12 +53,16 @@ pub fn read_launch_options(filename: &String) -> Result<BTreeMap<u32, String>, B
     let apps = config.software.valve.steam.apps.values;
     for (appid, values) in apps.iter() {
         let properties = values.clone().deserialize_into::<BTreeMap<String, Value>>();
-        let appid = appid.clone();
+        let appid = appid.clone().parse::<u32>();
+        if appid.is_err() {
+            warn!("read_launch_options appid error: {}", appid.unwrap_err());
+            continue;
+        }
         if let Some(launch_options) = properties?.get(OPTION) {
             let launch_options = launch_options.clone().deserialize_into::<String>()?;
-            result.insert(appid.parse::<u32>()?, launch_options);
+            result.insert(appid?, launch_options);
         } else {
-            result.insert(appid.parse::<u32>()?, String::new());
+            result.insert(appid?, String::new());
         }
     }
     Ok(result)
