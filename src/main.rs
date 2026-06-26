@@ -28,12 +28,14 @@ struct Config {
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct Profile {
     options: Option<BTreeMap<String, String>>,
+    locks: Option<Vec<String>>,
 }
 
 #[derive(Debug)]
 struct App {
     name: String,
     launch_options: String,
+    lock: bool,
 }
 
 #[derive(Default, PartialEq, Clone, Display, EnumString)]
@@ -59,6 +61,7 @@ struct EguiApp {
     app_sort: AppSort,
     protondb: bool,
     url: String,
+    locks: BTreeMap<u32, bool>,
 }
 
 fn main() -> eframe::Result {
@@ -123,6 +126,7 @@ fn update_apps(localconfig_vdf_path: &String) -> Option<BTreeMap<u32, App>> {
     backup_file(localconfig_vdf_path, ".orig").expect("Error backup failed");
     let properties =
         localconfig_vdf::read_launch_options(localconfig_vdf_path).unwrap_or(BTreeMap::default());
+    let profile: Profile = confy::load(consts::CODE_NAME, "profile").unwrap_or_default();
 
     let libraryfolders_vdf_path = config_dir(localconfig_vdf_path);
     let apps = libraryfolders_vdf::read_installed_apps(libraryfolders_vdf_path.clone())
@@ -134,8 +138,21 @@ fn update_apps(localconfig_vdf_path: &String) -> Option<BTreeMap<u32, App>> {
         .into_keys()
         .map(|appid| appid.to_string())
         .collect();
+    let locks: BTreeMap<u32, bool> = get_locks(appids.clone(), profile.locks.unwrap_or_default());
 
-    Some(get_installed_apps(&appids, &properties, &app_names).unwrap_or_default())
+    Some(get_installed_apps(&appids, &properties, &app_names, &locks).unwrap_or_default())
+}
+
+fn get_locks(appids: Vec<String>, locks: Vec<String>) -> BTreeMap<u32, bool> {
+    let mut result = BTreeMap::new();
+    for lock in locks.into_iter() {
+        for appid in appids.clone().into_iter() {
+            if appid == lock {
+                result.insert(appid.parse::<u32>().unwrap(), true);
+            }
+        }
+    }
+    result
 }
 
 fn update_launch_options(
@@ -193,15 +210,18 @@ fn get_installed_apps(
     appids: &Vec<String>,
     properties: &BTreeMap<u32, String>,
     app_names: &BTreeMap<u32, String>,
+    locks: &BTreeMap<u32, bool>,
 ) -> Result<BTreeMap<u32, App>, Box<dyn Error>> {
     let mut apps = BTreeMap::new();
     for appid in appids.iter() {
         let appid = appid.parse::<u32>().unwrap();
         if let Some(app_name) = app_names.get(&appid) {
             let launch_options = properties.get(&appid).unwrap_or(&String::new()).clone();
+            let lock = locks.get(&appid).unwrap_or(&false).clone();
             let game = App {
                 name: app_name.clone(),
                 launch_options: launch_options,
+                lock: lock,
             };
             apps.insert(appid, game);
         }
@@ -308,21 +328,29 @@ impl eframe::App for EguiApp {
 
                         let mut profile: Profile = Profile::default();
                         let mut options: BTreeMap<String, String> = BTreeMap::new();
+                        let mut locks: Vec<String> = Vec::new();
                         for (key, value) in self.all_launch_options.iter() {
                             options.insert(key.to_string(), value.clone());
                         }
+                        for (key, value) in self.locks.iter() {
+                            if *value {
+                                locks.push(key.to_string());
+                            }
+                        }
                         profile.options = Some(options);
-                        confy::store(consts::CODE_NAME, "profile", profile).unwrap();
+                        profile.locks = Some(locks.clone());
 
                         if !self.default_launch_options.trim().is_empty() {
-                            for launch_options in self.all_launch_options.values_mut() {
-                                if launch_options.is_empty()
+                            for (appid, launch_options) in self.all_launch_options.iter_mut() {
+                                if (launch_options.is_empty()
+                                    && !locks.contains(&appid.clone().to_string()))
                                     || launch_options == &previous_default_launch_options
                                 {
                                     *launch_options = self.default_launch_options.clone();
                                 }
                             }
                         }
+                        confy::store(consts::CODE_NAME, "profile", profile).unwrap();
                         backup_file(picked_path, ".bak").expect("Error backup failed");
                         localconfig_vdf::write_launch_options(
                             picked_path,
@@ -437,18 +465,46 @@ impl eframe::App for EguiApp {
 
                 TableBuilder::new(ui)
                     .resizable(true)
+                    .column(Column::auto().at_least(5.0))
                     .column(Column::auto().at_least(150.0))
                     .column(Column::remainder())
                     .header(20.0, |mut header| {
                         header.col(|ui| {
-                            ui.heading("Apps");
+                            ui.heading("🔒 Lock");
                         });
                         header.col(|ui| {
-                            ui.heading("Launch Options");
+                            ui.heading(" Steam Apps");
+                        });
+                        header.col(|ui| {
+                            ui.heading("⚙ Launch Options");
                         });
                     })
                     .body(|mut body| {
                         body.row(0.0, |mut row| {
+                            row.col(|ui| {
+                                if let Some(apps) = &self.apps {
+                                    let sorted_apps = sort_apps(self.app_sort.clone(), apps);
+                                    for (appid, properties) in sorted_apps.into_iter() {
+                                        let mut current_locks = properties.lock.clone();
+                                        match self.locks.get(&appid) {
+                                            Some(locks) => current_locks = locks.clone(),
+                                            None => {
+                                                self.locks.insert(*appid, current_locks.clone());
+                                            }
+                                        }
+
+                                        if is_filtered(&self.filter_apps, &properties.name) {
+                                            ui.style_mut().wrap_mode =
+                                                Some(egui::TextWrapMode::Truncate);
+                                            ui.add_sized(
+                                                [ui.available_width(), 20.0],
+                                                egui::Checkbox::without_text(&mut current_locks),
+                                            );
+                                            self.locks.insert(*appid, current_locks);
+                                        }
+                                    }
+                                }
+                            });
                             row.col(|ui| {
                                 if let Some(apps) = &self.apps {
                                     let sorted_apps = sort_apps(self.app_sort.clone(), apps);
