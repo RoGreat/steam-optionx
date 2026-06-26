@@ -327,19 +327,13 @@ impl eframe::App for EguiApp {
                         confy::store(consts::CODE_NAME, None, config).unwrap_or_default();
 
                         let mut profile: Profile = Profile::default();
-                        let mut options: BTreeMap<String, String> = BTreeMap::new();
                         let mut locks: Vec<String> = Vec::new();
-                        for (key, value) in self.all_launch_options.iter() {
-                            options.insert(key.to_string(), value.clone());
-                        }
                         for (key, value) in self.locks.iter() {
                             if *value {
                                 locks.push(key.to_string());
                             }
                         }
-                        profile.options = Some(options);
                         profile.locks = Some(locks.clone());
-
                         if !self.default_launch_options.trim().is_empty() {
                             for (appid, launch_options) in self.all_launch_options.iter_mut() {
                                 if (launch_options.is_empty()
@@ -350,6 +344,11 @@ impl eframe::App for EguiApp {
                                 }
                             }
                         }
+                        let mut options: BTreeMap<String, String> = BTreeMap::new();
+                        for (key, value) in self.all_launch_options.iter() {
+                            options.insert(key.to_string(), value.clone());
+                        }
+                        profile.options = Some(options);
                         confy::store(consts::CODE_NAME, "profile", profile).unwrap();
                         backup_file(picked_path, ".bak").expect("Error backup failed");
                         localconfig_vdf::write_launch_options(
