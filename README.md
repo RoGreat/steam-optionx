@@ -25,9 +25,8 @@ environment.systemPackages = with pkgs; [
 ];
 ```
 
-## Build
+## devenv run
 
 ```sh
-nix develop
-cargo build --release
+cargo run --release
 ```
