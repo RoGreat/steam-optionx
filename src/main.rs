@@ -381,14 +381,30 @@ impl eframe::App for EguiApp {
                     if ui.button("🔄 Restore").clicked() {
                         let profile: Profile =
                             confy::load(consts::CODE_NAME, "profile").unwrap_or_default();
+
+                        // Restore options
                         if let Some(options) = &profile.options {
-                            let mut profile: BTreeMap<u32, String> = BTreeMap::new();
+                            let mut profile_options: BTreeMap<u32, String> = BTreeMap::new();
                             for (key, value) in options.iter() {
-                                profile.insert(key.parse::<u32>().unwrap(), value.clone());
+                                profile_options.insert(key.parse::<u32>().unwrap(), value.clone());
                             }
-                            self.all_launch_options = profile.clone();
+                            self.all_launch_options = profile_options;
                         } else if let Some(apps) = &self.apps {
                             update_launch_options(apps, &mut self.all_launch_options)
+                        }
+
+                        // Restore locks
+                        if let Some(locks) = &profile.locks {
+                            self.locks.clear();
+                            for lock_id in locks {
+                                if let Ok(id) = lock_id.parse::<u32>() {
+                                    self.locks.insert(id, true);
+                                }
+                            }
+                        } else if let Some(apps) = &self.apps {
+                            for (appid, _) in apps.iter() {
+                                self.locks.insert(*appid, false);
+                            }
                         }
                     }
                     ui.label("Set default launch options:");
