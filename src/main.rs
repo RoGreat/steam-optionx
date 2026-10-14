@@ -379,6 +379,13 @@ impl eframe::App for EguiApp {
                     }
 
                     if ui.button("🔄 Restore").clicked() {
+                        // Restore default launch options from config
+                        let config: Config =
+                            confy::load(consts::CODE_NAME, None).unwrap_or_default();
+                        self.default_launch_options =
+                            config.default_launch_options.unwrap_or_default();
+
+                        // Load profile to restore options and locks
                         let profile: Profile =
                             confy::load(consts::CODE_NAME, "profile").unwrap_or_default();
 
