@@ -371,8 +371,10 @@ impl eframe::App for EguiApp {
                     );
 
                     if ui.button("🗑 Clear").clicked() {
-                        for launch_options in self.all_launch_options.values_mut() {
-                            launch_options.clear();
+                        for (appid, launch_options) in self.all_launch_options.iter_mut() {
+                            if !self.locks.get(appid).unwrap_or(&false) {
+                                launch_options.clear();
+                            }
                         }
                     }
 
