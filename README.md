@@ -25,8 +25,23 @@ environment.systemPackages = with pkgs; [
 ];
 ```
 
-## devenv run
+## Build
+
+Build and run from source NixOS example:
+
+```nix
+# home.nix
+programs.devenv.enable = true;
+```
 
 ```sh
 cargo run --release
+```
+
+### Debug
+
+`env_logger` provides debugging options:
+
+```sh
+RUST_LOG=steam_optionx=debug cargo run --release
 ```
