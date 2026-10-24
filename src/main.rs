@@ -73,6 +73,12 @@ fn main() -> eframe::Result {
     debug!("{} config loaded", consts::CODE_NAME);
 
     let steam_config = config.steam_config;
+    let compat_tools: BTreeMap<u32, String> = if let Some(localconfig_vdf_path) = &steam_config {
+        let ct_path = config_vdf_path(localconfig_vdf_path);
+        config_vdf::read_compat_tools(&ct_path.display().to_string()).unwrap_or_default()
+    } else {
+        BTreeMap::new()
+    };
     let apps = if let Some(localconfig_vdf_path) = &steam_config {
         debug!("localconfig.vdf: {}", localconfig_vdf_path);
         update_apps(localconfig_vdf_path)
@@ -118,6 +124,7 @@ fn main() -> eframe::Result {
                 app_sort: app_sort,
                 protondb: protondb,
                 url: url,
+                compat_tools: compat_tools,
                 ..Default::default()
             }))
         }),
@@ -503,6 +510,7 @@ impl eframe::App for EguiApp {
                     .resizable(true)
                     .column(Column::auto().at_least(5.0))
                     .column(Column::auto().at_least(150.0))
+                    .column(Column::auto().at_least(150.0))
                     .column(Column::remainder())
                     .header(20.0, |mut header| {
                         header.col(|ui| {
@@ -513,6 +521,9 @@ impl eframe::App for EguiApp {
                         });
                         header.col(|ui| {
                             ui.heading("⚙ Launch Options");
+                        });
+                        header.col(|ui| {
+                            ui.heading("Proton Version");
                         });
                     })
                     .body(|mut body| {
@@ -589,6 +600,19 @@ impl eframe::App for EguiApp {
                                                     .insert(*appid, current_launch_options);
                                             }
                                         }
+                                    }
+                                }
+                            });
+                            row.col(|ui| {
+                                if let Some(apps) = &self.apps {
+                                    let sorted_apps = sort_apps(self.app_sort.clone(), apps);
+                                    for (appid, _) in sorted_apps.into_iter() {
+                                        let proton = self
+                                            .compat_tools
+                                            .get(appid)
+                                            .unwrap_or(&String::new())
+                                            .clone();
+                                        ui.label(proton);
                                     }
                                 }
                             });
