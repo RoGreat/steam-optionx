@@ -506,118 +506,228 @@ impl eframe::App for EguiApp {
 
                 ui.separator();
 
-                TableBuilder::new(ui)
-                    .resizable(true)
-                    .column(Column::auto().at_least(5.0))
-                    .column(Column::auto().at_least(150.0))
-                    .column(Column::auto().at_least(150.0))
-                    .column(Column::remainder())
-                    .header(20.0, |mut header| {
-                        header.col(|ui| {
-                            ui.heading("🔒 Lock");
-                        });
-                        header.col(|ui| {
-                            ui.heading(" Steam Apps");
-                        });
-                        header.col(|ui| {
-                            ui.heading("⚙ Launch Options");
-                        });
-                        header.col(|ui| {
-                            ui.heading("Proton Version");
-                        });
-                    })
-                    .body(|mut body| {
-                        body.row(0.0, |mut row| {
-                            row.col(|ui| {
-                                if let Some(apps) = &self.apps {
-                                    let sorted_apps = sort_apps(self.app_sort.clone(), apps);
-                                    for (appid, properties) in sorted_apps.into_iter() {
-                                        let mut current_locks = properties.lock.clone();
-                                        match self.locks.get(&appid) {
-                                            Some(locks) => current_locks = locks.clone(),
-                                            None => {
-                                                self.locks.insert(*appid, current_locks.clone());
+                // Compatibility Tools column shown only when protondb enabled
+                if self.protondb {
+                    TableBuilder::new(ui)
+                        .resizable(true)
+                        .column(Column::auto().at_least(25.0))
+                        .column(Column::auto().at_least(200.0))
+                        .column(Column::auto().at_least(200.0))
+                        .column(Column::remainder())
+                        .header(20.0, |mut header| {
+                            header.col(|ui| {
+                                ui.heading("🔒");
+                            });
+                            header.col(|ui| {
+                                ui.heading(" Steam Apps");
+                            });
+                            header.col(|ui| {
+                                ui.heading("⚛ Compatibility Tools");
+                            });
+                            header.col(|ui| {
+                                ui.heading("⚙ Launch Options");
+                            });
+                        })
+                        .body(|mut body| {
+                            body.row(0.0, |mut row| {
+                                row.col(|ui| {
+                                    if let Some(apps) = &self.apps {
+                                        let sorted_apps = sort_apps(self.app_sort.clone(), apps);
+                                        for (appid, properties) in sorted_apps.into_iter() {
+                                            let mut current_locks = properties.lock.clone();
+                                            match self.locks.get(&appid) {
+                                                Some(locks) => current_locks = locks.clone(),
+                                                None => {
+                                                    self.locks
+                                                        .insert(*appid, current_locks.clone());
+                                                }
+                                            }
+                                            if is_filtered(&self.filter_apps, &properties.name) {
+                                                ui.style_mut().wrap_mode =
+                                                    Some(egui::TextWrapMode::Truncate);
+                                                ui.add_sized(
+                                                    [ui.available_width(), 20.0],
+                                                    egui::Checkbox::without_text(
+                                                        &mut current_locks,
+                                                    ),
+                                                );
+                                                self.locks.insert(*appid, current_locks);
                                             }
                                         }
-
-                                        if is_filtered(&self.filter_apps, &properties.name) {
+                                    }
+                                });
+                                row.col(|ui| {
+                                    if let Some(apps) = &self.apps {
+                                        let sorted_apps = sort_apps(self.app_sort.clone(), apps);
+                                        for (appid, properties) in sorted_apps.into_iter() {
+                                            if is_filtered(&self.filter_apps, &properties.name) {
+                                                ui.style_mut().wrap_mode =
+                                                    Some(egui::TextWrapMode::Truncate);
+                                                ui.add_sized(
+                                                    [ui.available_width(), 20.0],
+                                                    egui::Hyperlink::from_label_and_url(
+                                                        &properties.name,
+                                                        self.url.clone() + &appid.to_string(),
+                                                    ),
+                                                );
+                                            }
+                                        }
+                                    }
+                                });
+                                row.col(|ui| {
+                                    if let Some(apps) = &self.apps {
+                                        let sorted_apps = sort_apps(self.app_sort.clone(), apps);
+                                        for (appid, _) in sorted_apps.into_iter() {
+                                            let proton = self
+                                                .compat_tools
+                                                .get(appid)
+                                                .unwrap_or(&String::new())
+                                                .clone();
                                             ui.style_mut().wrap_mode =
                                                 Some(egui::TextWrapMode::Truncate);
                                             ui.add_sized(
                                                 [ui.available_width(), 20.0],
-                                                egui::Checkbox::without_text(&mut current_locks),
-                                            );
-                                            self.locks.insert(*appid, current_locks);
-                                        }
-                                    }
-                                }
-                            });
-                            row.col(|ui| {
-                                if let Some(apps) = &self.apps {
-                                    let sorted_apps = sort_apps(self.app_sort.clone(), apps);
-                                    for (appid, properties) in sorted_apps.into_iter() {
-                                        if is_filtered(&self.filter_apps, &properties.name) {
-                                            ui.style_mut().wrap_mode =
-                                                Some(egui::TextWrapMode::Truncate);
-                                            ui.add_sized(
-                                                [ui.available_width(), 20.0],
-                                                egui::Hyperlink::from_label_and_url(
-                                                    &properties.name,
-                                                    self.url.clone() + &appid.to_string(),
-                                                ),
+                                                egui::Label::new(proton),
                                             );
                                         }
                                     }
-                                }
-                            });
-                            row.col(|ui| {
-                                if let Some(apps) = &self.apps {
-                                    let sorted_apps = sort_apps(self.app_sort.clone(), apps);
-                                    for (appid, properties) in sorted_apps.into_iter() {
-                                        let mut current_launch_options =
-                                            properties.launch_options.clone();
-                                        match self.all_launch_options.get(&appid) {
-                                            Some(launch_options) => {
-                                                current_launch_options = launch_options.clone()
+                                });
+                                row.col(|ui| {
+                                    if let Some(apps) = &self.apps {
+                                        let sorted_apps = sort_apps(self.app_sort.clone(), apps);
+                                        for (appid, properties) in sorted_apps.into_iter() {
+                                            let mut current_launch_options =
+                                                properties.launch_options.clone();
+                                            match self.all_launch_options.get(&appid) {
+                                                Some(launch_options) => {
+                                                    current_launch_options = launch_options.clone()
+                                                }
+                                                None => {
+                                                    self.all_launch_options.insert(
+                                                        *appid,
+                                                        current_launch_options.clone(),
+                                                    );
+                                                }
                                             }
-                                            None => {
-                                                self.all_launch_options
-                                                    .insert(*appid, current_launch_options.clone());
-                                            }
-                                        }
-
-                                        if is_filtered(&self.filter_apps, &properties.name) {
-                                            ui.style_mut().wrap_mode =
-                                                Some(egui::TextWrapMode::Truncate);
-                                            let response = ui.add_sized(
-                                                [ui.available_width() - 20.0, 20.0],
-                                                egui::TextEdit::singleline(
-                                                    &mut current_launch_options,
-                                                ),
-                                            );
-                                            if response.changed() {
-                                                self.all_launch_options
-                                                    .insert(*appid, current_launch_options);
+                                            if is_filtered(&self.filter_apps, &properties.name) {
+                                                ui.style_mut().wrap_mode =
+                                                    Some(egui::TextWrapMode::Truncate);
+                                                let response = ui.add_sized(
+                                                    [ui.available_width() - 20.0, 20.0],
+                                                    egui::TextEdit::singleline(
+                                                        &mut current_launch_options,
+                                                    ),
+                                                );
+                                                if response.changed() {
+                                                    self.all_launch_options
+                                                        .insert(*appid, current_launch_options);
+                                                }
                                             }
                                         }
                                     }
-                                }
-                            });
-                            row.col(|ui| {
-                                if let Some(apps) = &self.apps {
-                                    let sorted_apps = sort_apps(self.app_sort.clone(), apps);
-                                    for (appid, _) in sorted_apps.into_iter() {
-                                        let proton = self
-                                            .compat_tools
-                                            .get(appid)
-                                            .unwrap_or(&String::new())
-                                            .clone();
-                                        ui.label(proton);
-                                    }
-                                }
+                                });
                             });
                         });
-                    });
+                } else {
+                    TableBuilder::new(ui)
+                        .resizable(true)
+                        .column(Column::auto().at_least(25.0))
+                        .column(Column::auto().at_least(200.0))
+                        .column(Column::remainder())
+                        .header(20.0, |mut header| {
+                            header.col(|ui| {
+                                ui.heading("🔒");
+                            });
+                            header.col(|ui| {
+                                ui.heading(" Steam Apps");
+                            });
+                            header.col(|ui| {
+                                ui.heading("⚙ Launch Options");
+                            });
+                        })
+                        .body(|mut body| {
+                            body.row(0.0, |mut row| {
+                                row.col(|ui| {
+                                    if let Some(apps) = &self.apps {
+                                        let sorted_apps = sort_apps(self.app_sort.clone(), apps);
+                                        for (appid, properties) in sorted_apps.into_iter() {
+                                            let mut current_locks = properties.lock.clone();
+                                            match self.locks.get(&appid) {
+                                                Some(locks) => current_locks = locks.clone(),
+                                                None => {
+                                                    self.locks
+                                                        .insert(*appid, current_locks.clone());
+                                                }
+                                            }
+                                            if is_filtered(&self.filter_apps, &properties.name) {
+                                                ui.style_mut().wrap_mode =
+                                                    Some(egui::TextWrapMode::Truncate);
+                                                ui.add_sized(
+                                                    [ui.available_width(), 20.0],
+                                                    egui::Checkbox::without_text(
+                                                        &mut current_locks,
+                                                    ),
+                                                );
+                                                self.locks.insert(*appid, current_locks);
+                                            }
+                                        }
+                                    }
+                                });
+                                row.col(|ui| {
+                                    if let Some(apps) = &self.apps {
+                                        let sorted_apps = sort_apps(self.app_sort.clone(), apps);
+                                        for (appid, properties) in sorted_apps.into_iter() {
+                                            if is_filtered(&self.filter_apps, &properties.name) {
+                                                ui.style_mut().wrap_mode =
+                                                    Some(egui::TextWrapMode::Truncate);
+                                                ui.add_sized(
+                                                    [ui.available_width(), 20.0],
+                                                    egui::Hyperlink::from_label_and_url(
+                                                        &properties.name,
+                                                        self.url.clone() + &appid.to_string(),
+                                                    ),
+                                                );
+                                            }
+                                        }
+                                    }
+                                });
+                                row.col(|ui| {
+                                    if let Some(apps) = &self.apps {
+                                        let sorted_apps = sort_apps(self.app_sort.clone(), apps);
+                                        for (appid, properties) in sorted_apps.into_iter() {
+                                            let mut current_launch_options =
+                                                properties.launch_options.clone();
+                                            match self.all_launch_options.get(&appid) {
+                                                Some(launch_options) => {
+                                                    current_launch_options = launch_options.clone()
+                                                }
+                                                None => {
+                                                    self.all_launch_options.insert(
+                                                        *appid,
+                                                        current_launch_options.clone(),
+                                                    );
+                                                }
+                                            }
+                                            if is_filtered(&self.filter_apps, &properties.name) {
+                                                ui.style_mut().wrap_mode =
+                                                    Some(egui::TextWrapMode::Truncate);
+                                                let response = ui.add_sized(
+                                                    [ui.available_width() - 20.0, 20.0],
+                                                    egui::TextEdit::singleline(
+                                                        &mut current_launch_options,
+                                                    ),
+                                                );
+                                                if response.changed() {
+                                                    self.all_launch_options
+                                                        .insert(*appid, current_launch_options);
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
+                            });
+                        });
+                }
             }
         });
     }
