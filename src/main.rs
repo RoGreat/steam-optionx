@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod appmanifest_acf;
+mod config_vdf;
 mod consts;
 mod libraryfolders_vdf;
 mod localconfig_vdf;
@@ -62,6 +63,7 @@ struct EguiApp {
     protondb: bool,
     url: String,
     locks: BTreeMap<u32, bool>,
+    compat_tools: BTreeMap<u32, String>,
 }
 
 fn main() -> eframe::Result {
@@ -128,7 +130,7 @@ fn update_apps(localconfig_vdf_path: &String) -> Option<BTreeMap<u32, App>> {
         localconfig_vdf::read_launch_options(localconfig_vdf_path).unwrap_or(BTreeMap::default());
     let profile: Profile = confy::load(consts::CODE_NAME, "profile").unwrap_or_default();
 
-    let libraryfolders_vdf_path = config_dir(localconfig_vdf_path);
+    let libraryfolders_vdf_path = libraryfolders_vdf_path(localconfig_vdf_path);
     let apps = libraryfolders_vdf::read_installed_apps(libraryfolders_vdf_path.clone())
         .unwrap_or_default();
     let app_names: BTreeMap<u32, String> =
@@ -195,15 +197,25 @@ fn userdata_dir() -> PathBuf {
     }
 }
 
-fn config_dir(localconfig_vdf_path: &String) -> PathBuf {
+fn config_root_path(localconfig_vdf_path: &String) -> PathBuf {
     let mut path = PathBuf::from(localconfig_vdf_path);
-    path.pop();
-    path.pop();
-    path.pop();
-    path.pop();
+    for _ in 0..4 {
+        path.pop();
+    }
     path.push("config");
-    path.push("libraryfolders.vdf");
     path
+}
+
+fn libraryfolders_vdf_path(localconfig_vdf_path: &String) -> PathBuf {
+    let mut root = config_root_path(localconfig_vdf_path);
+    root.push("libraryfolders.vdf");
+    root
+}
+
+fn config_vdf_path(localconfig_vdf_path: &String) -> PathBuf {
+    let mut root = config_root_path(localconfig_vdf_path);
+    root.push("config.vdf");
+    root
 }
 
 fn get_installed_apps(
