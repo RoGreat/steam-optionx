@@ -308,7 +308,9 @@ impl eframe::App for EguiApp {
                         confy::store(consts::CODE_NAME, None, config).unwrap_or_default();
                         self.apps = update_apps(localconfig_vdf_path);
                         if let Some(apps) = &self.apps {
-                            update_launch_options(apps, &mut self.all_launch_options)
+                            update_launch_options(apps, &mut self.all_launch_options);
+                            let ct_path = config_vdf_path(localconfig_vdf_path);
+                            self.compat_tools = config_vdf::read_compat_tools(&ct_path.display().to_string()).unwrap_or_default();
                         }
                         ui.memory_mut(|mem| mem.open_popup(popup_id));
                     }
